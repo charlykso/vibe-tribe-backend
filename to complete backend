@@ -1,0 +1,697 @@
+Complete Backend Implementation Guide for VibeTribe
+1. Backend Technology Stack
+
+Copy
+Primary Stack:
+- Node.js with Express.js (API server)
+- Supabase (Database, Auth, Realtime, Storage)
+- Redis (Caching, Queue management)
+- Bull Queue (Job scheduling for posts)
+- Socket.io (Real-time updates)
+
+Supporting Services:
+- Stripe (Payments)
+- SendGrid (Emails)
+- Cloudinary (Media processing)
+- OpenAI API (AI features)
+2. Social Media API Integrations Needed
+Each platform requires specific setup:
+
+Facebook/Instagram (Meta)
+javascript
+
+Copy
+// Requirements:
+- Facebook App creation
+- OAuth 2.0 implementation
+- Permissions needed:
+  - pages_show_list
+  - pages_read_engagement
+  - pages_manage_posts
+  - instagram_basic
+  - instagram_content_publish
+  
+// Rate Limits:
+- 200 calls/hour per user
+- 4800 calls/day
+Twitter/X
+javascript
+
+Copy
+// Requirements:
+- Twitter Developer Account ($100/month for basic)
+- OAuth 2.0 with PKCE
+- Permissions:
+  - tweet.read
+  - tweet.write
+  - users.read
+  - follows.read
+  
+// Rate Limits:
+- 300 requests/15min (reading)
+- 300 posts/3hours
+LinkedIn
+javascript
+
+Copy
+// Requirements:
+- LinkedIn App creation
+- OAuth 2.0
+- Permissions:
+  - r_liteprofile
+  - r_emailaddress
+  - w_member_social
+  - r_organization_social
+  
+// Rate Limits:
+- 100 requests/day (varies by endpoint)
+TikTok
+javascript
+
+Copy
+// Requirements:
+- TikTok Developer Account
+- OAuth 2.0
+- Limited API access (mainly for business accounts)
+3. Database Schema (Detailed)
+sql
+
+Copy
+-- CORE TABLES
+CREATE TABLE organizations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) UNIQUE NOT NULL,
+    subscription_tier VARCHAR(50) DEFAULT 'free',
+    subscription_status VARCHAR(50) DEFAULT 'active',
+    stripe_customer_id VARCHAR(255),
+    stripe_subscription_id VARCHAR(255),
+    limits JSONB DEFAULT '{
+        "social_accounts": 3,
+        "team_members": 1,
+        "posts_per_month": 100,
+        "communities": 1,
+        "storage_gb": 5
+    }',
+    usage JSONB DEFAULT '{
+        "social_accounts": 0,
+        "team_members": 0,
+        "posts_this_month": 0,
+        "communities": 0,
+        "storage_used_gb": 0
+    }',
+    settings JSONB DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- SOCIAL MEDIA MANAGEMENT
+CREATE TABLE social_accounts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    platform VARCHAR(50) NOT NULL,
+    platform_account_id VARCHAR(255) NOT NULL,
+    account_name VARCHAR(255),
+    account_username VARCHAR(255),
+    account_avatar TEXT,
+    access_token TEXT ENCRYPTED,
+    refresh_token TEXT ENCRYPTED,
+    token_expires_at TIMESTAMP WITH TIME ZONE,
+    permissions JSONB,
+    is_active BOOLEAN DEFAULT true,
+    last_sync_at TIMESTAMP WITH TIME ZONE,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(organization_id, platform, platform_account_id)
+);
+
+CREATE TABLE posts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    created_by UUID REFERENCES users(id),
+    status VARCHAR(50) DEFAULT 'draft', -- draft, scheduled, publishing, published, failed
+    content TEXT NOT NULL,
+    media JSONB DEFAULT '[]', -- [{url, type, alt_text, platform_media_id}]
+    platforms JSONB NOT NULL, -- [{platform, account_id, platform_post_id, status}]
+    scheduled_for TIMESTAMP WITH TIME ZONE,
+    published_at TIMESTAMP WITH TIME ZONE,
+    settings JSONB DEFAULT '{}', -- {first_comment, location, tags, etc.}
+    analytics JSONB DEFAULT '{}', -- {likes, comments, shares, reach}
+    approval_status VARCHAR(50), -- pending, approved, rejected
+    approved_by UUID REFERENCES users(id),
+    error_log JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ANALYTICS & INSIGHTS
+CREATE TABLE analytics_snapshots (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    social_account_id UUID REFERENCES social_accounts(id) ON DELETE CASCADE,
+    snapshot_date DATE NOT NULL,
+    metrics JSONB NOT NULL, -- {followers, following, posts, engagement_rate, etc.}
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(social_account_id, snapshot_date)
+);
+
+CREATE TABLE post_analytics (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    post_id UUID REFERENCES posts(id) ON DELETE CASCADE,
+    platform VARCHAR(50) NOT NULL,
+    recorded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    metrics JSONB NOT NULL, -- {likes, comments, shares, saves, reach, impressions}
+    UNIQUE(post_id, platform, recorded_at)
+);
+
+-- COMMUNITY MANAGEMENT
+CREATE TABLE communities (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    platform VARCHAR(50) NOT NULL, -- discord, slack, telegram, etc.
+    platform_id VARCHAR(255),
+    member_count INTEGER DEFAULT 0,
+    settings JSONB DEFAULT '{}',
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE community_members (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    community_id UUID REFERENCES communities(id) ON DELETE CASCADE,
+    platform_user_id VARCHAR(255) NOT NULL,
+    username VARCHAR(255),
+    display_name VARCHAR(255),
+    avatar_url TEXT,
+    roles JSONB DEFAULT '[]',
+    tags JSONB DEFAULT '[]', -- ['vip', 'supporter', 'active']
+    engagement_score INTEGER DEFAULT 0,
+    sentiment_score DECIMAL(3,2), -- -1 to 1
+    join_date TIMESTAMP WITH TIME ZONE,
+    last_active TIMESTAMP WITH TIME ZONE,
+    metadata JSONB DEFAULT '{}',
+    UNIQUE(community_id, platform_user_id)
+);
+
+CREATE TABLE messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    platform VARCHAR(50) NOT NULL,
+    platform_message_id VARCHAR(255),
+    conversation_id VARCHAR(255),
+    sender_id VARCHAR(255),
+    sender_name VARCHAR(255),
+    content TEXT,
+    message_type VARCHAR(50), -- text, image, video, etc.
+    sentiment VARCHAR(50), -- positive, neutral, negative
+    is_read BOOLEAN DEFAULT false,
+    is_archived BOOLEAN DEFAULT false,
+    assigned_to UUID REFERENCES users(id),
+    tags JSONB DEFAULT '[]',
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- AUTOMATION & WORKFLOWS
+CREATE TABLE automation_rules (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    is_active BOOLEAN DEFAULT true,
+    trigger_type VARCHAR(50), -- new_follower, mention, keyword, time_based
+    trigger_conditions JSONB NOT NULL,
+    actions JSONB NOT NULL, -- [{type: 'auto_reply', content: '...'}]
+    execution_count INTEGER DEFAULT 0,
+    last_executed TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- MODERATION
+CREATE TABLE moderation_queue (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    community_id UUID REFERENCES communities(id),
+    content_type VARCHAR(50), -- message, comment, post
+    content_id VARCHAR(255),
+    content TEXT,
+    author_id VARCHAR(255),
+    author_name VARCHAR(255),
+    reason VARCHAR(255), -- spam, toxic, reported, keyword_match
+    ai_confidence DECIMAL(3,2),
+    status VARCHAR(50) DEFAULT 'pending', -- pending, approved, rejected, escalated
+    moderated_by UUID REFERENCES users(id),
+    moderated_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+4. API Architecture
+javascript
+
+Copy
+// Core API Structure
+/api/v1/
+├── /auth
+│   ├── POST   /signup
+│   ├── POST   /login
+│   ├── POST   /logout
+│   ├── POST   /refresh
+│   └── POST   /forgot-password
+├── /organizations
+│   ├── GET    /
+│   ├── POST   /
+│   ├── GET    /:id
+│   ├── PUT    /:id
+│   └── DELETE /:id
+├── /social-accounts
+│   ├── GET    /
+│   ├── POST   /connect
+│   ├── GET    /callback/:platform
+│   ├── DELETE /:id
+│   └── POST   /:id/refresh
+├── /posts
+│   ├── GET    /
+│   ├── POST   /
+│   ├── GET    /:id
+│   ├── PUT    /:id
+│   ├── DELETE /:id
+│   ├── POST   /:id/publish
+│   └── POST   /:id/schedule
+├── /analytics
+│   ├── GET    /overview
+│   ├── GET    /posts
+│   ├── GET    /accounts
+│   ├── GET    /engagement
+│   └── GET    /export
+├── /communities
+│   ├── GET    /
+│   ├── POST   /
+│   ├── GET    /:id
+│   ├── GET    /:id/members
+│   └── GET    /:id/health
+├── /messages
+│   ├── GET    /
+│   ├── GET    /:id
+│   ├── POST   /:id/reply
+│   ├── PUT    /:id/assign
+│   └── PUT    /:id/archive
+├── /automation
+│   ├── GET    /rules
+│   ├── POST   /rules
+│   ├── PUT    /rules/:id
+│   └── DELETE /rules/:id
+└── /team
+    ├── GET    /members
+    ├── POST   /invite
+    ├── PUT    /members/:id
+    └── DELETE /members/:id
+5. Backend Services Implementation
+javascript
+
+Copy
+// 1. Social Media Service
+class SocialMediaService {
+  async connectAccount(platform, authCode) {
+    // Exchange auth code for tokens
+    // Store encrypted tokens in DB
+    // Fetch initial account data
+    // Set up webhooks if supported
+  }
+  
+  async publishPost(postId) {
+    // Get post from DB
+    // For each platform:
+    //   - Upload media if needed
+    //   - Format content for platform
+    //   - Make API call to publish
+    //   - Store platform post ID
+    //   - Handle errors
+  }
+  
+  async syncAnalytics(accountId) {
+    // Fetch latest metrics from platform
+    // Calculate deltas
+    // Store in analytics_snapshots
+    // Update post analytics
+  }
+}
+
+// 2. Queue Service (using Bull)
+const postQueue = new Bull('posts', {
+  redis: { port: 6379, host: '127.0.0.1' }
+});
+
+postQueue.process(async (job) => {
+  const { postId } = job.data;
+  await socialMediaService.publishPost(postId);
+});
+
+// Schedule posts
+async function schedulePost(postId, scheduledTime) {
+  const delay = scheduledTime - Date.now();
+  await postQueue.add({ postId }, { delay });
+}
+
+// 3. Real-time Service (Socket.io)
+io.on('connection', (socket) => {
+  socket.on('join-organization', (orgId) => {
+    socket.join(`org-${orgId}`);
+  });
+  
+  // Emit updates
+  socket.to(`org-${orgId}`).emit('new-message', message);
+  socket.to(`org-${orgId}`).emit('analytics-update', data);
+});
+
+// 4. AI Service
+class AIService {
+  async generateCaption(context) {
+    const response = await openai.createCompletion({
+      model: "gpt-4",
+      prompt: `Generate social media caption for: ${context}`,
+      max_tokens: 200
+    });
+    return response.data.choices[0].text;
+  }
+  
+  async analyzeSentiment(text) {
+    // Use OpenAI or dedicated sentiment API
+  }
+  
+  async detectSpam(content) {
+    // AI-based spam detection
+  }
+}
+6. Security Implementation
+javascript
+
+Copy
+// 1. Authentication Middleware
+const authenticate = async (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+  
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = await getUserById(payload.userId);
+    next();
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+};
+
+// 2. Rate Limiting
+const rateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests'
+});
+
+// 3. Input Validation (using Joi)
+const postSchema = Joi.object({
+  content: Joi.string().max(5000).required(),
+  platforms: Joi.array().items(Joi.string()).min(1).required(),
+  scheduledFor: Joi.date().min('now').optional(),
+  media: Joi.array().items(Joi.object({
+    url: Joi.string().uri().required(),
+    type: Joi.string().valid('image', 'video').required()
+  })).optional()
+});
+
+// 4. Encryption for sensitive data
+const crypto = require('crypto');
+const algorithm = 'aes-256-gcm';
+
+function encrypt(text) {
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv(algorithm, Buffer.from(process.env.ENCRYPTION_KEY, 'hex'), iv);
+  // ... encryption logic
+}
+7. Third-Party Service Integration
+javascript
+
+Copy
+// 1. Stripe Integration
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+async function createSubscription(customerId, priceId) {
+  const subscription = await stripe.subscriptions.create({
+    customer: customerId,
+    items: [{ price: priceId }],
+    trial_period_days: 14
+  });
+  return subscription;
+}
+
+// 2. Webhook Handlers
+app.post('/webhooks/stripe', async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+  
+  switch (event.type) {
+    case 'subscription.updated':
+      await updateOrganizationLimits(event.data.object);
+      break;
+    case 'subscription.deleted':
+      await downgradeOrganization(event.data.object);
+      break;
+  }
+});
+
+// 3. Media Upload Service
+const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
+
+const upload = multer({ 
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4'];
+    cb(null, allowedTypes.includes(file.mimetype));
+  }
+});
+
+async function uploadToCloudinary(file) {
+  const result = await cloudinary.uploader.upload(file.path, {
+    resource_type: 'auto',
+    folder: 'vibetribe'
+  });
+  return result.secure_url;
+}
+8. Background Jobs & Cron Tasks
+javascript
+
+Copy
+// 1. Analytics Sync Job (runs every hour)
+cron.schedule('0 * * * *', async () => {
+  const accounts = await getActiveAccounts();
+  for (const account of accounts) {
+    await analyticsQueue.add('sync', { accountId: account.id });
+  }
+});
+
+// 2. Engagement Monitoring (runs every 30 minutes)
+cron.schedule('*/30 * * * *', async () => {
+  const recentPosts = await getRecentPosts();
+  for (const post of recentPosts) {
+    await checkEngagement(post);
+  }
+});
+
+// 3. Community Health Check (daily)
+cron.schedule('0 0 * * *', async () => {
+  const communities = await getAllCommunities();
+  for (const community of communities) {
+    await calculateHealthScore(community);
+  }
+});
+
+// 4. Usage Reset (monthly)
+cron.schedule('0 0 1 * *', async () => {
+  await resetMonthlyUsage();
+});
+9. Error Handling & Monitoring
+javascript
+
+Copy
+// 1. Global Error Handler
+app.use((err, req, res, next) => {
+  logger.error({
+    error: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    ip: req.ip,
+    user: req.user?.id
+  });
+  
+  res.status(err.status || 500).json({
+    error: process.env.NODE_ENV === 'production' 
+      ? 'Something went wrong' 
+      : err.message
+  });
+});
+
+// 2. Sentry Integration
+const Sentry = require('@sentry/node');
+Sentry.init({ dsn: process.env.SENTRY_DSN });
+
+// 3. Custom Logger
+const winston = require('winston');
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.json(),
+  transports: [
+    new winston.transports.File({ filename: 'error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'combined.log' })
+  ]
+});
+10. Deployment Requirements
+yaml
+
+Copy
+# docker-compose.yml
+version: '3.8'
+services:
+  api:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+    depends_on:
+      - redis
+      - postgres
+  
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+  
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: vibetribe
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+11. Environment Variables Needed
+env
+
+Copy
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/vibetribe
+REDIS_URL=redis://localhost:6379
+
+# Auth
+JWT_SECRET=your-super-secret-jwt-key
+ENCRYPTION_KEY=your-32-byte-hex-encryption-key
+
+# Social Media APIs
+FACEBOOK_APP_ID=
+FACEBOOK_APP_SECRET=
+TWITTER_API_KEY=
+TWITTER_API_SECRET=
+LINKEDIN_CLIENT_ID=
+LINKEDIN_CLIENT_SECRET=
+INSTAGRAM_CLIENT_ID=
+INSTAGRAM_CLIENT_SECRET=
+
+# Third-party Services
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+OPENAI_API_KEY=
+SENDGRID_API_KEY=
+CLOUDINARY_URL=
+SENTRY_DSN=
+
+# App Config
+FRONTEND_URL=https://app.vibetribe.com
+API_URL=https://api.vibetribe.com
+WEBHOOK_URL=https://api.vibetribe.com/webhooks
+12. Testing Strategy
+javascript
+
+Copy
+// Unit Tests (Jest)
+describe('PostService', () => {
+  test('should schedule post correctly', async () => {
+    const post = await postService.schedulePost({
+      content: 'Test post',
+      platforms: ['twitter'],
+      scheduledFor: new Date('2024-12-25')
+    });
+    expect(post.status).toBe('scheduled');
+  });
+});
+
+// Integration Tests
+describe('API Endpoints', () => {
+  test('POST /api/posts', async () => {
+    const response = await request(app)
+      .post('/api/posts')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ content: 'Test', platforms: ['twitter'] });
+    expect(response.status).toBe(201);
+  });
+});
+
+// E2E Tests (Cypress)
+describe('Post Creation Flow', () => {
+  it('should create and publish a post', () => {
+    cy.login();
+    cy.visit('/dashboard/posts/new');
+    cy.get('[data-cy=content]').type('Test post');
+    cy.get('[data-cy=platform-twitter]').click();
+    cy.get('[data-cy=publish]').click();
+    cy.contains('Post published successfully');
+  });
+});
+
+Implementation
+Phase 1 : Foundation
+Set up Supabase project and schema
+Implement authentication system
+Create basic CRUD APIs
+Set up development environment
+
+Phase 2 : Social Integration
+Implement OAuth flows for each platform
+Build post publishing system
+Create media upload service
+Set up job queues
+
+Phase 3 : Analytics & Real-time
+Build analytics collection system
+Implement real-time updates
+Create dashboard APIs
+Add caching layer
+
+Phase 4 : Community Features
+Implement message ingestion
+Build moderation system
+Create automation engine
+Add AI features
+
+Phase 5 : Polish & Scale
+Add comprehensive error handling
+Implement rate limiting
+Set up monitoring
+Performance optimization
+Security audit
+
+Phase 6 : Deployment
+Set up CI/CD pipeline
+Configure production environment
+Implement backup strategies
+Launch beta testing
+
+
+This comprehensive backend will support all the features of VibeTribe while being scalable, secure, and maintainable. Would you like me to elaborate on any specific part or help you get started with a particular component?
