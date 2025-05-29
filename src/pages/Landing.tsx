@@ -1,15 +1,16 @@
 
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { 
-  Users, 
-  BarChart3, 
-  Shield, 
-  Zap, 
-  Globe, 
-  MessageSquare, 
-  TrendingUp, 
+import {
+  Users,
+  BarChart3,
+  Shield,
+  Zap,
+  Globe,
+  MessageSquare,
+  TrendingUp,
   Star,
   ArrowRight,
   Check,
@@ -92,12 +93,16 @@ export const Landing = () => {
               <a href="#features" className="text-white/80 hover:text-white transition-colors">Features</a>
               <a href="#pricing" className="text-white/80 hover:text-white transition-colors">Pricing</a>
               <a href="#about" className="text-white/80 hover:text-white transition-colors">About</a>
-              <Button variant="outline" className="text-white border-white/30 hover:bg-white/10">
-                Sign In
-              </Button>
-              <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
-                Get Started
-              </Button>
+              <Link to="/login">
+                <Button variant="outline" className="bg-white/10 text-white border-white/30 hover:bg-white/20 backdrop-blur-sm">
+                  Sign In
+                </Button>
+              </Link>
+              <Link to="/register">
+                <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white">
+                  Get Started
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -116,11 +121,13 @@ export const Landing = () => {
               The ultimate platform for managing communities, moderating content, and driving engagement across all your social media channels.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
-              <Button size="lg" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-lg px-8 py-6">
-                Start Free Trial
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-              <Button size="lg" variant="outline" className="text-white border-white/30 hover:bg-white/10 text-lg px-8 py-6">
+              <Link to="/register">
+                <Button size="lg" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-lg px-8 py-6">
+                  Start Free Trial
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+              <Button size="lg" variant="outline" className="bg-white/10 text-white border-white/30 hover:bg-white/20 backdrop-blur-sm text-lg px-8 py-6">
                 <Play className="mr-2 h-5 w-5" />
                 Watch Demo
               </Button>
@@ -185,7 +192,7 @@ export const Landing = () => {
               Powerful tools designed to help you build, manage, and grow thriving online communities.
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
               <Card key={index} className="bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/15 transition-all duration-300 group">
@@ -212,7 +219,7 @@ export const Landing = () => {
             </h2>
             <p className="text-xl text-white/80">See what our customers are saying about VibeTribe</p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, index) => (
               <Card key={index} className="bg-white/10 backdrop-blur-md border-white/20">
@@ -245,11 +252,13 @@ export const Landing = () => {
             Join thousands of community managers who are already using VibeTribe to scale their social presence.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-lg px-8 py-6">
-              Start Your Free Trial
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-            <Button size="lg" variant="outline" className="text-white border-white/30 hover:bg-white/10 text-lg px-8 py-6">
+            <Link to="/register">
+              <Button size="lg" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-lg px-8 py-6">
+                Start Your Free Trial
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+            <Button size="lg" variant="outline" className="bg-white/10 text-white border-white/30 hover:bg-white/20 backdrop-blur-sm text-lg px-8 py-6">
               Schedule Demo
             </Button>
           </div>

@@ -1,69 +1,85 @@
 
 import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Filter, Star, User, MessageSquare, Award } from 'lucide-react';
+import { Search, Filter, Star, User, MessageSquare, Award, Loader2, Users } from 'lucide-react';
+import { UsersService, UserWithStats } from '@/lib/services/users';
+
+// Helper interface for UI compatibility
+interface MemberDisplay {
+  id: string;
+  name: string;
+  avatar: string;
+  email: string;
+  joinDate: string;
+  status: string;
+  posts: number;
+  reactions: number;
+  level: string;
+  badges: string[];
+  lastSeen: string;
+}
+
+// Helper function to map UserWithStats to MemberDisplay
+const mapUserToMemberDisplay = (user: UserWithStats): MemberDisplay => {
+  const getStatusFromRole = (role: string) => {
+    switch (role) {
+      case 'admin': return 'Champion';
+      case 'moderator': return 'Regular';
+      default: return user.stats?.engagement_score > 50 ? 'Champion' :
+               user.stats?.engagement_score > 20 ? 'Regular' : 'At Risk';
+    }
+  };
+
+  const getLevelFromStats = (stats?: any) => {
+    if (!stats) return 'Bronze';
+    const score = stats.engagement_score || 0;
+    if (score > 80) return 'Platinum';
+    if (score > 60) return 'Gold';
+    if (score > 30) return 'Silver';
+    return 'Bronze';
+  };
+
+  return {
+    id: user.id,
+    name: user.name,
+    avatar: user.name.split(' ').map(n => n[0]).join('').toUpperCase(),
+    email: user.email,
+    joinDate: user.created_at,
+    status: getStatusFromRole(user.role),
+    posts: user.stats?.total_posts || 0,
+    reactions: user.stats?.total_reactions || 0,
+    level: getLevelFromStats(user.stats),
+    badges: user.stats?.badges || [],
+    lastSeen: user.stats?.last_seen || 'Unknown'
+  };
+};
 
 export const MemberManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
 
-  const members = [
-    {
-      id: 1,
-      name: 'Alex Chen',
-      avatar: 'AC',
-      email: 'alex.chen@email.com',
-      joinDate: '2024-01-15',
-      status: 'Champion',
-      posts: 247,
-      reactions: 1840,
-      level: 'Gold',
-      badges: ['Top Contributor', 'Helpful'],
-      lastSeen: '2 hours ago'
-    },
-    {
-      id: 2,
-      name: 'Sarah Johnson',
-      avatar: 'SJ',
-      email: 'sarah.j@email.com',
-      joinDate: '2024-02-03',
-      status: 'Regular',
-      posts: 89,
-      reactions: 456,
-      level: 'Silver',
-      badges: ['Active Member'],
-      lastSeen: '1 day ago'
-    },
-    {
-      id: 3,
-      name: 'Mike Rodriguez',
-      avatar: 'MR',
-      email: 'mike.r@email.com',
-      joinDate: '2024-03-12',
-      status: 'At Risk',
-      posts: 12,
-      reactions: 34,
-      level: 'Bronze',
-      badges: [],
-      lastSeen: '2 weeks ago'
-    },
-    {
-      id: 4,
-      name: 'Emma Wilson',
-      avatar: 'EW',
-      email: 'emma.wilson@email.com',
-      joinDate: '2024-01-08',
-      status: 'Champion',
-      posts: 312,
-      reactions: 2150,
-      level: 'Platinum',
-      badges: ['Community Leader', 'Mentor', 'Top Contributor'],
-      lastSeen: '30 minutes ago'
-    }
-  ];
+  // Fetch organization members with stats
+  const {
+    data: membersData,
+    isLoading,
+    error
+  } = useQuery({
+    queryKey: ['organization-members', searchTerm, selectedFilter],
+    queryFn: () => UsersService.getOrganizationMembers({
+      search: searchTerm || undefined,
+      limit: 100
+    }),
+    select: (response) => ({
+      members: (response.data?.members || []).map(mapUserToMemberDisplay),
+      total: response.data?.pagination?.total || 0
+    })
+  });
+
+  const members = membersData?.members || [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -142,8 +158,50 @@ export const MemberManagement = () => {
       </div>
 
       {/* Members Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredMembers.map((member) => (
+      {error ? (
+        <div className="text-center py-12">
+          <p className="text-red-600 dark:text-red-400 mb-4">
+            Failed to load members: {error.message}
+          </p>
+          <Button variant="outline" onClick={() => window.location.reload()}>
+            Retry
+          </Button>
+        </div>
+      ) : isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <Card key={`member-skeleton-${i}`} className="bg-white dark:bg-gray-800">
+              <CardContent className="p-6 animate-pulse">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+                    <div>
+                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-2"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-32"></div>
+                    </div>
+                  </div>
+                  <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
+                </div>
+                <div className="space-y-3">
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+                  <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : filteredMembers.length === 0 ? (
+        <div className="text-center py-12">
+          <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400 text-lg">No members found</p>
+          <p className="text-gray-500 dark:text-gray-500 text-sm mt-2">
+            {searchTerm ? 'Try adjusting your search terms' : 'No members have joined yet'}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredMembers.map((member) => (
           <Card key={member.id} className="bg-white dark:bg-gray-800">
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
@@ -210,8 +268,9 @@ export const MemberManagement = () => {
               </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

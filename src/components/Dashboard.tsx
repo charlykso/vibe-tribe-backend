@@ -2,6 +2,7 @@
 import React from 'react';
 import { TrendingUp, Users, MessageSquare, Heart, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { BackendStatus } from '@/components/BackendStatus';
 
 export const Dashboard = () => {
   const stats = [
@@ -80,6 +81,11 @@ export const Dashboard = () => {
             </Card>
           );
         })}
+      </div>
+
+      {/* Backend Integration Status */}
+      <div className="flex justify-center">
+        <BackendStatus />
       </div>
 
       {/* Main Content Grid */}

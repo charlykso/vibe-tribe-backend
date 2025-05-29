@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bell, Shield, Users, Zap, Globe, Key, Database, Mail } from 'lucide-react';
+import { TeamInvitations } from '@/components/team/TeamInvitations';
 
 export const Settings = () => {
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -22,12 +23,7 @@ export const Settings = () => {
     { name: 'WhatsApp Business', status: 'pending', members: '2.3K', icon: '📱' },
   ];
 
-  const teamMembers = [
-    { name: 'Sarah Johnson', role: 'Community Manager', status: 'admin', avatar: '👩' },
-    { name: 'Mike Chen', role: 'Moderator', status: 'moderator', avatar: '👨' },
-    { name: 'Emma Davis', role: 'Content Creator', status: 'editor', avatar: '👩‍💼' },
-    { name: 'Alex Rodriguez', role: 'Analytics Specialist', status: 'viewer', avatar: '👨‍💻' },
-  ];
+
 
   return (
     <div className="space-y-6">
@@ -112,7 +108,7 @@ export const Settings = () => {
                     </div>
                     <div className="flex items-center space-x-3">
                       <Badge variant={
-                        platform.status === 'connected' ? 'default' : 
+                        platform.status === 'connected' ? 'default' :
                         platform.status === 'pending' ? 'secondary' : 'destructive'
                       }>
                         {platform.status}
@@ -162,7 +158,7 @@ export const Settings = () => {
                 </div>
                 <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} />
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <Bell className="h-5 w-5 text-gray-500" />
@@ -201,35 +197,7 @@ export const Settings = () => {
 
         {/* Team Management */}
         <TabsContent value="team" className="space-y-6">
-          <Card className="bg-white dark:bg-gray-800">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-gray-900 dark:text-white">Team Members</CardTitle>
-                <Button>Invite Member</Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {teamMembers.map((member, index) => (
-                  <div key={index} className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-4">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-2xl">{member.avatar}</span>
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">{member.name}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">{member.role}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Badge variant={member.status === 'admin' ? 'default' : 'secondary'}>
-                        {member.status}
-                      </Badge>
-                      <Button variant="outline" size="sm">Edit</Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <TeamInvitations />
         </TabsContent>
 
         {/* Security */}
