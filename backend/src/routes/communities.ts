@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { communityService } from '../services/community';
-import { moderationService } from '../services/moderation';
-import { authMiddleware } from '../middleware/auth';
+import { communityService } from '../services/community.js';
+import { moderationService } from '../services/moderation.js';
+import { authMiddleware } from '../middleware/auth.js';
 import '../types/express';
 
 const router = Router();

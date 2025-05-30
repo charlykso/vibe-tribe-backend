@@ -9,9 +9,9 @@ import {
   generateOptimizedUrl,
   getUploadStats,
   validateCloudinaryConfig
-} from '../services/media';
-import { asyncHandler, ValidationError, BadRequestError } from '../middleware/errorHandler';
-import { AuthenticatedRequest, requireOrganization } from '../middleware/auth';
+} from '../services/media.js';
+import { asyncHandler, ValidationError, BadRequestError } from '../middleware/errorHandler.js';
+import { AuthenticatedRequest, requireOrganization } from '../middleware/auth.js';
 
 const router = Router();
 

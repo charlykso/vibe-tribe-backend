@@ -5,7 +5,7 @@ import {
   CommunityMember,
   CommunityMessage,
   ConversationThread
-} from '../types/database';
+} from '../types/database.js';
 
 export class CommunityService {
   // ============================================================================

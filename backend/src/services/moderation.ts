@@ -5,7 +5,7 @@ import {
   ModerationRule,
   ModerationAction,
   CommunityMessage
-} from '../types/database';
+} from '../types/database.js';
 
 export class ModerationService {
   // ============================================================================
