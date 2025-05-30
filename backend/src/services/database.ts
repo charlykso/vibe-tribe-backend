@@ -123,6 +123,18 @@ export const initializeDatabase = async (): Promise<void> => {
       // Initialize Firebase Admin with service account
       // Handle private key formatting for different environments
       let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+      // Try Base64 encoded key first (safer for environment variables)
+      const base64Key = process.env.FIREBASE_PRIVATE_KEY_BASE64;
+      if (base64Key) {
+        try {
+          privateKey = Buffer.from(base64Key, 'base64').toString('utf8');
+          console.log('✅ Using Base64 encoded private key');
+        } catch (error) {
+          console.warn('Failed to decode Base64 private key, falling back to regular key');
+        }
+      }
+
       if (privateKey) {
         // Remove any surrounding quotes
         privateKey = privateKey.replace(/^["']|["']$/g, '');
@@ -161,20 +173,29 @@ export const initializeDatabase = async (): Promise<void> => {
         throw new Error('Missing Firebase configuration. Please check your environment variables.');
       }
 
-      console.log('🔧 Firebase config loaded:');
-      console.log('  - Project ID:', serviceAccount.project_id);
-      console.log('  - Client Email:', serviceAccount.client_email);
-      console.log('  - Private Key:', serviceAccount.private_key ? `Present (${serviceAccount.private_key.length} chars)` : 'Missing');
-      console.log('  - Private Key starts with:', serviceAccount.private_key?.substring(0, 50) + '...');
-      console.log('  - Private Key contains newlines:', serviceAccount.private_key?.includes('\n'));
-      console.log('  - Private Key line count:', serviceAccount.private_key?.split('\n').length);
-
-      // Additional debugging for the private key format
+      // Debug private key format
       if (serviceAccount.private_key) {
         const lines = serviceAccount.private_key.split('\n');
-        console.log('  - First line:', lines[0]);
-        console.log('  - Last line:', lines[lines.length - 1]);
-        console.log('  - Total lines:', lines.length);
+        console.log('🔧 Firebase config loaded:');
+        console.log('  - Project ID:', serviceAccount.project_id);
+        console.log('  - Client Email:', serviceAccount.client_email);
+        console.log('  - Private Key: Present (' + serviceAccount.private_key.length + ' chars)');
+        console.log('  - Private Key contains newlines:', serviceAccount.private_key.includes('\n'));
+        console.log('  - Private Key line count:', lines.length);
+        console.log('  - First line: "' + lines[0] + '"');
+        console.log('  - Last line: "' + lines[lines.length - 1] + '"');
+
+        // Validate the private key format
+        if (!lines[0].includes('-----BEGIN PRIVATE KEY-----')) {
+          console.error('❌ Private key does not start with BEGIN marker!');
+          console.error('  - Actual first line:', JSON.stringify(lines[0]));
+        }
+        if (!lines[lines.length - 1].includes('-----END PRIVATE KEY-----')) {
+          console.error('❌ Private key does not end with END marker!');
+          console.error('  - Actual last line:', JSON.stringify(lines[lines.length - 1]));
+        }
+      } else {
+        console.error('❌ Private key is missing!');
       }
 
       admin.initializeApp({
