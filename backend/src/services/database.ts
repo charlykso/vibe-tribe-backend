@@ -124,6 +124,9 @@ export const initializeDatabase = async (): Promise<void> => {
       // Handle private key formatting for different environments
       let privateKey = process.env.FIREBASE_PRIVATE_KEY;
       if (privateKey) {
+        // Remove any surrounding quotes
+        privateKey = privateKey.replace(/^["']|["']$/g, '');
+
         // Replace escaped newlines with actual newlines
         privateKey = privateKey.replace(/\\n/g, '\n');
 
