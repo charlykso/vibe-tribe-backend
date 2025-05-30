@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { communityService } from '../services/community.js';
 import { moderationService } from '../services/moderation.js';
 import { authMiddleware } from '../middleware/auth.js';
-import '../types/express';
+import '../types/express.js';
 
 const router = Router();
 
