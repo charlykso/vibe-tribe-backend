@@ -120,50 +120,67 @@ export const initializeDatabase = async (): Promise<void> => {
 
     // Check if Firebase Admin is already initialized
     if (admin.apps.length === 0) {
-      // Initialize Firebase Admin with service account
-      // Handle private key formatting for different environments
-      let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+      // Try to use complete Firebase service account JSON first
+      let serviceAccount: any = null;
 
-      // Try Base64 encoded key first (safer for environment variables)
-      const base64Key = process.env.FIREBASE_PRIVATE_KEY_BASE64;
-      if (base64Key) {
+      // Method 1: Complete Firebase service account JSON (Base64 encoded)
+      const firebaseServiceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
+      if (firebaseServiceAccountBase64) {
         try {
-          privateKey = Buffer.from(base64Key, 'base64').toString('utf8');
-          console.log('✅ Using Base64 encoded private key');
+          const serviceAccountJson = Buffer.from(firebaseServiceAccountBase64, 'base64').toString('utf8');
+          serviceAccount = JSON.parse(serviceAccountJson);
+          console.log('✅ Using complete Firebase service account JSON (Base64)');
         } catch (error) {
-          console.warn('Failed to decode Base64 private key, falling back to regular key');
+          console.warn('Failed to parse Firebase service account JSON, falling back to individual variables');
         }
       }
 
-      if (privateKey) {
-        // Remove any surrounding quotes
-        privateKey = privateKey.replace(/^["']|["']$/g, '');
+      // Method 2: Individual environment variables (fallback)
+      if (!serviceAccount) {
+        // Handle private key formatting for different environments
+        let privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
-        // Replace escaped newlines with actual newlines
-        privateKey = privateKey.replace(/\\n/g, '\n');
-
-        // If the key doesn't start with -----BEGIN, it might be base64 encoded
-        if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+        // Try Base64 encoded key first (safer for environment variables)
+        const base64Key = process.env.FIREBASE_PRIVATE_KEY_BASE64;
+        if (base64Key) {
           try {
-            privateKey = Buffer.from(privateKey, 'base64').toString('utf8');
+            privateKey = Buffer.from(base64Key, 'base64').toString('utf8');
+            console.log('✅ Using Base64 encoded private key');
           } catch (error) {
-            console.warn('Failed to decode base64 private key, using as-is');
+            console.warn('Failed to decode Base64 private key, falling back to regular key');
           }
         }
-      }
 
-      const serviceAccount = {
-        type: "service_account",
-        project_id: process.env.FIREBASE_PROJECT_ID,
-        private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-        private_key: privateKey,
-        client_email: process.env.FIREBASE_CLIENT_EMAIL,
-        client_id: process.env.FIREBASE_CLIENT_ID,
-        auth_uri: process.env.FIREBASE_AUTH_URI,
-        token_uri: process.env.FIREBASE_TOKEN_URI,
-        auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL,
-        client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL
-      };
+        if (privateKey) {
+          // Remove any surrounding quotes
+          privateKey = privateKey.replace(/^["']|["']$/g, '');
+
+          // Replace escaped newlines with actual newlines
+          privateKey = privateKey.replace(/\\n/g, '\n');
+
+          // If the key doesn't start with -----BEGIN, it might be base64 encoded
+          if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+            try {
+              privateKey = Buffer.from(privateKey, 'base64').toString('utf8');
+            } catch (error) {
+              console.warn('Failed to decode base64 private key, using as-is');
+            }
+          }
+        }
+
+        serviceAccount = {
+          type: "service_account",
+          project_id: process.env.FIREBASE_PROJECT_ID,
+          private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+          private_key: privateKey,
+          client_email: process.env.FIREBASE_CLIENT_EMAIL,
+          client_id: process.env.FIREBASE_CLIENT_ID,
+          auth_uri: process.env.FIREBASE_AUTH_URI,
+          token_uri: process.env.FIREBASE_TOKEN_URI,
+          auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL,
+          client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL
+        };
+      }
 
       if (!serviceAccount.project_id || !serviceAccount.private_key || !serviceAccount.client_email) {
         console.error('❌ Missing Firebase configuration:');
