@@ -4,12 +4,12 @@ import path from 'path';
 // Load environment variables
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
-import { initializeDatabase, getFirestoreClient, getServerTimestamp } from './services/database';
+import { initializeDatabase, getFirestoreClient, getServerTimestamp } from './services/database.js';
 
 async function testFirebaseConnection() {
   console.log('🔥 Testing Firebase Connection...');
   console.log('');
-  
+
   try {
     // Test 1: Initialize Database
     console.log('📊 Test 1: Initializing Firebase Database...');
@@ -31,7 +31,7 @@ async function testFirebaseConnection() {
       timestamp: getServerTimestamp(),
       project_id: process.env.FIREBASE_PROJECT_ID
     };
-    
+
     const docRef = await db.collection('_connection_test').add(testDoc);
     console.log('✅ Write operation successful, document ID:', docRef.id);
     console.log('');
@@ -53,7 +53,7 @@ async function testFirebaseConnection() {
       .where('test', '==', true)
       .limit(5)
       .get();
-    
+
     console.log(`✅ Query operation successful, found ${querySnapshot.size} documents`);
     querySnapshot.forEach(doc => {
       console.log(`  - Document ID: ${doc.id}`);
@@ -63,7 +63,7 @@ async function testFirebaseConnection() {
     // Test 6: Test Collection Creation
     console.log('📊 Test 6: Testing Collection Creation...');
     const collections = ['users', 'organizations', 'posts', 'social_accounts', 'analytics'];
-    
+
     for (const collectionName of collections) {
       try {
         // Try to read from collection (this will create it if it doesn't exist)
@@ -114,7 +114,7 @@ async function testFirebaseConnection() {
       .orderBy('created_at', 'desc')
       .limit(10)
       .get();
-    
+
     console.log(`✅ Complex query successful, found ${complexQuery.size} active users`);
     console.log('');
 

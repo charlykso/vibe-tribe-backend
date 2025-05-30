@@ -4,13 +4,13 @@ import path from 'path';
 // Load environment variables
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
-import { initializeDatabase, getFirestoreClient, getServerTimestamp } from './services/database';
+import { initializeDatabase, getFirestoreClient, getServerTimestamp } from './services/database.js';
 
 async function testFirebaseConnectionSimple() {
   console.log('🔥 Firebase Connection Test Results');
   console.log('=====================================');
   console.log('');
-  
+
   try {
     // Test 1: Initialize Database
     console.log('📊 Test 1: Database Initialization');
@@ -33,7 +33,7 @@ async function testFirebaseConnectionSimple() {
       timestamp: getServerTimestamp(),
       project_id: process.env.FIREBASE_PROJECT_ID
     };
-    
+
     const docRef = await db.collection('_connection_test').add(testDoc);
     console.log('✅ SUCCESS: Document written to Firestore');
     console.log(`   Document ID: ${docRef.id}`);
@@ -55,7 +55,7 @@ async function testFirebaseConnectionSimple() {
       .where('test', '==', true)
       .limit(5)
       .get();
-    
+
     console.log('✅ SUCCESS: Query executed successfully');
     console.log(`   Found ${querySnapshot.size} documents`);
     console.log('');
@@ -63,7 +63,7 @@ async function testFirebaseConnectionSimple() {
     // Test 6: Collection Access
     console.log('📊 Test 6: Collection Access');
     const collections = ['users', 'organizations', 'posts', 'social_accounts'];
-    
+
     for (const collectionName of collections) {
       try {
         const snapshot = await db.collection(collectionName).limit(1).get();

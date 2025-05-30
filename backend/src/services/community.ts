@@ -1,4 +1,4 @@
-import { getFirestoreClient } from './database';
+import { getFirestoreClient } from './database.js';
 import {
   Community,
   CreateCommunity,

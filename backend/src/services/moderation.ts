@@ -1,5 +1,5 @@
-import { getFirestoreClient } from './database';
-import { aiService } from './ai';
+import { getFirestoreClient } from './database.js';
+import { aiService } from './ai.js';
 import {
   ModerationQueue,
   ModerationRule,
