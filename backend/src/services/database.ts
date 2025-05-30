@@ -166,6 +166,16 @@ export const initializeDatabase = async (): Promise<void> => {
       console.log('  - Client Email:', serviceAccount.client_email);
       console.log('  - Private Key:', serviceAccount.private_key ? `Present (${serviceAccount.private_key.length} chars)` : 'Missing');
       console.log('  - Private Key starts with:', serviceAccount.private_key?.substring(0, 50) + '...');
+      console.log('  - Private Key contains newlines:', serviceAccount.private_key?.includes('\n'));
+      console.log('  - Private Key line count:', serviceAccount.private_key?.split('\n').length);
+
+      // Additional debugging for the private key format
+      if (serviceAccount.private_key) {
+        const lines = serviceAccount.private_key.split('\n');
+        console.log('  - First line:', lines[0]);
+        console.log('  - Last line:', lines[lines.length - 1]);
+        console.log('  - Total lines:', lines.length);
+      }
 
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
