@@ -134,9 +134,27 @@ analyticsQueue.process('sync', async (job) => {
   try {
     console.log(`📊 Processing analytics sync for account: ${accountId}`);
 
-    // TODO: Implement analytics sync logic
-    // This would fetch analytics data from social media platforms
-    // and update the analytics collection in Firestore
+    // Import the analytics sync service
+    const { AnalyticsSyncService } = await import('./analyticsSync.js');
+    const analyticsService = new AnalyticsSyncService();
+
+    if (accountId) {
+      // Sync specific account
+      const firestore = (await import('./database.js')).getFirestoreClient();
+      const accountDoc = await firestore.collection('social_accounts').doc(accountId).get();
+
+      if (accountDoc.exists) {
+        const account = { id: accountDoc.id, ...accountDoc.data() };
+        await analyticsService.syncAccountAnalytics(account as any);
+      } else {
+        throw new Error(`Account ${accountId} not found`);
+      }
+    } else if (organizationId) {
+      // Sync all accounts in organization
+      await analyticsService.syncOrganizationAnalytics(organizationId);
+    } else {
+      throw new Error('Either accountId or organizationId must be provided');
+    }
 
     console.log(`✅ Analytics sync completed for account ${accountId}`);
     return { success: true };
