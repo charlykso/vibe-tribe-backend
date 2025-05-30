@@ -151,8 +151,18 @@ export const initializeDatabase = async (): Promise<void> => {
       };
 
       if (!serviceAccount.project_id || !serviceAccount.private_key || !serviceAccount.client_email) {
+        console.error('❌ Missing Firebase configuration:');
+        console.error('  - Project ID:', !!serviceAccount.project_id);
+        console.error('  - Private Key:', !!serviceAccount.private_key, serviceAccount.private_key ? `(${serviceAccount.private_key.length} chars)` : '');
+        console.error('  - Client Email:', !!serviceAccount.client_email);
         throw new Error('Missing Firebase configuration. Please check your environment variables.');
       }
+
+      console.log('🔧 Firebase config loaded:');
+      console.log('  - Project ID:', serviceAccount.project_id);
+      console.log('  - Client Email:', serviceAccount.client_email);
+      console.log('  - Private Key:', serviceAccount.private_key ? `Present (${serviceAccount.private_key.length} chars)` : 'Missing');
+      console.log('  - Private Key starts with:', serviceAccount.private_key?.substring(0, 50) + '...');
 
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
