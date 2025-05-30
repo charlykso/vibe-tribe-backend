@@ -207,6 +207,16 @@ export const initializeDatabase = async (): Promise<void> => {
         } catch (error) {
           console.error('  - Key content is NOT valid base64: ❌', error.message);
         }
+
+        // Debug the complete service account object
+        console.log('🔍 Complete service account object:');
+        console.log('  - type:', serviceAccount.type);
+        console.log('  - project_id:', serviceAccount.project_id);
+        console.log('  - private_key_id:', serviceAccount.private_key_id);
+        console.log('  - client_email:', serviceAccount.client_email);
+        console.log('  - client_id:', serviceAccount.client_id);
+        console.log('  - auth_uri:', serviceAccount.auth_uri);
+        console.log('  - token_uri:', serviceAccount.token_uri);
       } else {
         console.error('❌ Private key is missing!');
       }
