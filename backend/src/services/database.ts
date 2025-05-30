@@ -121,11 +121,27 @@ export const initializeDatabase = async (): Promise<void> => {
     // Check if Firebase Admin is already initialized
     if (admin.apps.length === 0) {
       // Initialize Firebase Admin with service account
+      // Handle private key formatting for different environments
+      let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+      if (privateKey) {
+        // Replace escaped newlines with actual newlines
+        privateKey = privateKey.replace(/\\n/g, '\n');
+
+        // If the key doesn't start with -----BEGIN, it might be base64 encoded
+        if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+          try {
+            privateKey = Buffer.from(privateKey, 'base64').toString('utf8');
+          } catch (error) {
+            console.warn('Failed to decode base64 private key, using as-is');
+          }
+        }
+      }
+
       const serviceAccount = {
         type: "service_account",
         project_id: process.env.FIREBASE_PROJECT_ID,
         private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-        private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        private_key: privateKey,
         client_email: process.env.FIREBASE_CLIENT_EMAIL,
         client_id: process.env.FIREBASE_CLIENT_ID,
         auth_uri: process.env.FIREBASE_AUTH_URI,
