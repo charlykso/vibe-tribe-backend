@@ -34,7 +34,10 @@
     "dist",
     "src/auth-test.ts",
     "src/simple-server.ts",
-    "src/scripts/test-auth.ts"
+    "src/scripts/test-auth.ts",
+    "src/__tests__/**/*",
+    "**/*.test.ts",
+    "**/*.spec.ts"
   ],
   "ts-node": {
     "esm": true
