@@ -1,4 +1,6 @@
-// Script to encode Firebase private key to Base64
+// Test Firebase private key validation
+import admin from 'firebase-admin'
+
 const privateKey = `-----BEGIN PRIVATE KEY-----
 MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCbTTuyEC5ZYP0W
 duUd+AQA4fsVcHLEP52ybI9+QIptIefE4JOsMIkwYwdosNnGQHWJGw+y8ucPm0E8
@@ -26,9 +28,32 @@ TqHT0s5xnsJWiEG/UyO6qpW/G1yPATALKki/Bv0CgYEAhgOhbZa9rH12Gn5Kw5xf
 qz8a5TrkONMJW+xAfOJF/qDwQnFaCX2GCjxEgzP54OEHBSsWD9LrEFISQZcpd8oo
 PK1KX9erXPYcZ4SToO5zsV5cJjcUMJUxcbuAQPXaT7op7tX2YACGcWYozKsm0G2m
 41J6fSNlF4bxj1OoOP3NFHI=
------END PRIVATE KEY-----`;
+-----END PRIVATE KEY-----`
 
-const base64Encoded = Buffer.from(privateKey).toString('base64');
-console.log('Base64 encoded private key:');
-console.log(base64Encoded);
-console.log('\nLength:', base64Encoded.length);
+const serviceAccount = {
+  type: 'service_account',
+  project_id: 'socialmm-c0c2d',
+  private_key_id: 'ea1eb647d18062afabf8937cea3b336e14c0c63e',
+  private_key: privateKey,
+  client_email:
+    'firebase-adminsdk-fbsvc@socialmm-c0c2d.iam.gserviceaccount.com',
+  client_id: '102259138690885537971',
+  auth_uri: 'https://accounts.google.com/o/oauth2/auth',
+  token_uri: 'https://oauth2.googleapis.com/token',
+  auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
+  client_x509_cert_url:
+    'https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40socialmm-c0c2d.iam.gserviceaccount.com',
+}
+
+console.log('Testing Firebase private key...')
+console.log('Private key length:', privateKey.length)
+console.log('Private key lines:', privateKey.split('\n').length)
+
+try {
+  const credential = admin.credential.cert(serviceAccount)
+  console.log('✅ Private key is valid!')
+  console.log('Credential created successfully')
+} catch (error) {
+  console.error('❌ Private key validation failed:', error.message)
+  console.error('Error details:', error)
+}

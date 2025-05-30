@@ -194,6 +194,19 @@ export const initializeDatabase = async (): Promise<void> => {
           console.error('❌ Private key does not end with END marker!');
           console.error('  - Actual last line:', JSON.stringify(lines[lines.length - 1]));
         }
+
+        // Additional validation - check for common issues
+        const keyContent = lines.slice(1, -1).join('');
+        console.log('  - Key content length (without headers):', keyContent.length);
+        console.log('  - Key content sample:', keyContent.substring(0, 50) + '...');
+
+        // Check if the key content is valid base64
+        try {
+          Buffer.from(keyContent, 'base64');
+          console.log('  - Key content is valid base64: ✅');
+        } catch (error) {
+          console.error('  - Key content is NOT valid base64: ❌', error.message);
+        }
       } else {
         console.error('❌ Private key is missing!');
       }
