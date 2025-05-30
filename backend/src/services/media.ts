@@ -22,27 +22,27 @@ const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
 // Multer configuration for file uploads
 const storage = multer.memoryStorage();
 
-const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+const fileFilter = (req: Request, file: any, cb: multer.FileFilterCallback) => {
   // Check file type
   if (!ALLOWED_TYPES.includes(file.mimetype)) {
     cb(new Error(`File type ${file.mimetype} is not allowed. Allowed types: ${ALLOWED_TYPES.join(', ')}`));
     return;
   }
-  
+
   // Check file size
   const isImage = ALLOWED_IMAGE_TYPES.includes(file.mimetype);
   const isVideo = ALLOWED_VIDEO_TYPES.includes(file.mimetype);
-  
+
   if (isImage && file.size > MAX_IMAGE_SIZE) {
     cb(new Error(`Image file size must be less than ${MAX_IMAGE_SIZE / (1024 * 1024)}MB`));
     return;
   }
-  
+
   if (isVideo && file.size > MAX_VIDEO_SIZE) {
     cb(new Error(`Video file size must be less than ${MAX_VIDEO_SIZE / (1024 * 1024)}MB`));
     return;
   }
-  
+
   cb(null, true);
 };
 
@@ -57,7 +57,7 @@ export const upload = multer({
 
 // Upload file to Cloudinary
 export const uploadToCloudinary = async (
-  file: Express.Multer.File,
+  file: any,
   organizationId: string,
   userId: string
 ): Promise<{
@@ -73,19 +73,19 @@ export const uploadToCloudinary = async (
   try {
     const isVideo = ALLOWED_VIDEO_TYPES.includes(file.mimetype);
     const resourceType = isVideo ? 'video' : 'image';
-    
+
     // Generate folder structure: vibetribe/{organizationId}/{userId}/{year}/{month}
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const folder = `vibetribe/${organizationId}/${userId}/${year}/${month}`;
-    
+
     // Generate unique filename
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(2, 15);
     const extension = path.extname(file.originalname);
     const filename = `${timestamp}_${randomString}${extension}`;
-    
+
     const uploadOptions: any = {
       resource_type: resourceType,
       folder,
@@ -93,7 +93,7 @@ export const uploadToCloudinary = async (
       overwrite: false,
       unique_filename: true,
     };
-    
+
     // Image-specific optimizations
     if (resourceType === 'image') {
       uploadOptions.transformation = [
@@ -102,7 +102,7 @@ export const uploadToCloudinary = async (
         { width: 2048, height: 2048, crop: 'limit' }, // Limit max dimensions
       ];
     }
-    
+
     // Video-specific optimizations
     if (resourceType === 'video') {
       uploadOptions.transformation = [
@@ -110,7 +110,7 @@ export const uploadToCloudinary = async (
         { width: 1920, height: 1080, crop: 'limit' }, // Limit max dimensions
       ];
     }
-    
+
     // Upload to Cloudinary
     const result = await new Promise<any>((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
@@ -123,12 +123,12 @@ export const uploadToCloudinary = async (
           }
         }
       );
-      
+
       uploadStream.end(file.buffer);
     });
-    
+
     console.log(`✅ File uploaded to Cloudinary: ${result.secure_url}`);
-    
+
     return {
       url: result.secure_url,
       publicId: result.public_id,
@@ -139,7 +139,7 @@ export const uploadToCloudinary = async (
       duration: result.duration,
       bytes: result.bytes,
     };
-    
+
   } catch (error) {
     console.error('❌ Cloudinary upload error:', error);
     throw new Error(`Failed to upload file: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -148,7 +148,7 @@ export const uploadToCloudinary = async (
 
 // Upload multiple files
 export const uploadMultipleToCloudinary = async (
-  files: Express.Multer.File[],
+  files: any[],
   organizationId: string,
   userId: string
 ): Promise<Array<{
@@ -169,7 +169,7 @@ export const uploadMultipleToCloudinary = async (
       originalName: file.originalname,
     };
   });
-  
+
   return Promise.all(uploadPromises);
 };
 
@@ -177,7 +177,7 @@ export const uploadMultipleToCloudinary = async (
 export const deleteFromCloudinary = async (publicId: string, resourceType: 'image' | 'video' = 'image'): Promise<void> => {
   try {
     const result = await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
-    
+
     if (result.result === 'ok') {
       console.log(`✅ File deleted from Cloudinary: ${publicId}`);
     } else {
@@ -227,9 +227,9 @@ export const generateOptimizedUrl = (
     quality = 'auto',
     format = 'auto',
   } = options;
-  
+
   const transformations: string[] = [];
-  
+
   if (width || height) {
     const dimensions = [
       width && `w_${width}`,
@@ -238,12 +238,12 @@ export const generateOptimizedUrl = (
     ].filter(Boolean).join(',');
     transformations.push(dimensions);
   }
-  
+
   transformations.push(`q_${quality}`);
   transformations.push(`f_${format}`);
-  
+
   const transformationString = transformations.join('/');
-  
+
   return cloudinary.url(publicId, {
     transformation: transformationString,
     secure: true,
@@ -257,14 +257,14 @@ export const validateCloudinaryConfig = (): boolean => {
     'CLOUDINARY_API_KEY',
     'CLOUDINARY_API_SECRET',
   ];
-  
+
   const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-  
+
   if (missingVars.length > 0) {
     console.error(`❌ Missing Cloudinary environment variables: ${missingVars.join(', ')}`);
     return false;
   }
-  
+
   return true;
 };
 
@@ -273,7 +273,7 @@ export const getUploadStats = async (organizationId: string) => {
   try {
     // Get usage statistics from Cloudinary
     const result = await cloudinary.api.usage();
-    
+
     return {
       totalStorage: result.storage.usage,
       totalTransformations: result.transformations.usage,

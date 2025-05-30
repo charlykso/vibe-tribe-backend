@@ -76,7 +76,7 @@ router.post('/upload', upload.single('file'), asyncHandler(async (req: Authentic
 
 // POST /api/v1/media/upload-multiple - Multiple file upload
 router.post('/upload-multiple', upload.array('files', 10), asyncHandler(async (req: AuthenticatedRequest, res) => {
-  const files = req.files as Express.Multer.File[];
+  const files = req.files as any[];
 
   if (!files || files.length === 0) {
     throw new BadRequestError('No files provided');
