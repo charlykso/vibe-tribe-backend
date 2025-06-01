@@ -15,6 +15,41 @@ interface OAuthResult {
   error?: string;
 }
 
+// Load OAuth credentials from Base64 or individual environment variables
+function loadOAuthCredentials() {
+  // Try Base64 encoded credentials first
+  const oauthBase64 = process.env.OAUTH_CREDENTIALS_BASE64;
+  if (oauthBase64) {
+    try {
+      const credentialsJson = Buffer.from(oauthBase64, 'base64').toString('utf8');
+      const credentials = JSON.parse(credentialsJson);
+      console.log('✅ Using Base64 encoded OAuth credentials');
+      return credentials;
+    } catch (error) {
+      console.warn('Failed to parse Base64 OAuth credentials, falling back to individual variables');
+    }
+  }
+
+  // Fallback to individual environment variables
+  return {
+    TWITTER_CLIENT_ID: process.env.TWITTER_CLIENT_ID || '',
+    TWITTER_CLIENT_SECRET: process.env.TWITTER_CLIENT_SECRET || '',
+    TWITTER_REDIRECT_URI: process.env.TWITTER_REDIRECT_URI || '',
+    LINKEDIN_CLIENT_ID: process.env.LINKEDIN_CLIENT_ID || '',
+    LINKEDIN_CLIENT_SECRET: process.env.LINKEDIN_CLIENT_SECRET || '',
+    LINKEDIN_REDIRECT_URI: process.env.LINKEDIN_REDIRECT_URI || '',
+    FACEBOOK_APP_ID: process.env.FACEBOOK_APP_ID || '',
+    FACEBOOK_APP_SECRET: process.env.FACEBOOK_APP_SECRET || '',
+    FACEBOOK_REDIRECT_URI: process.env.FACEBOOK_REDIRECT_URI || '',
+    INSTAGRAM_CLIENT_ID: process.env.INSTAGRAM_CLIENT_ID || '',
+    INSTAGRAM_CLIENT_SECRET: process.env.INSTAGRAM_CLIENT_SECRET || '',
+    INSTAGRAM_REDIRECT_URI: process.env.INSTAGRAM_REDIRECT_URI || ''
+  };
+}
+
+// Load credentials once at module level
+const oauthCredentials = loadOAuthCredentials();
+
 // Twitter OAuth Service
 export class TwitterOAuthService {
   private config: OAuthConfig;
@@ -22,9 +57,9 @@ export class TwitterOAuthService {
 
   constructor() {
     this.config = {
-      clientId: process.env.TWITTER_CLIENT_ID || '',
-      clientSecret: process.env.TWITTER_CLIENT_SECRET || '',
-      redirectUri: process.env.TWITTER_REDIRECT_URI || ''
+      clientId: oauthCredentials.TWITTER_CLIENT_ID || '',
+      clientSecret: oauthCredentials.TWITTER_CLIENT_SECRET || '',
+      redirectUri: oauthCredentials.TWITTER_REDIRECT_URI || ''
     };
 
     if (!this.config.clientId || !this.config.clientSecret) {
@@ -156,9 +191,9 @@ export class LinkedInOAuthService {
 
   constructor() {
     this.config = {
-      clientId: process.env.LINKEDIN_CLIENT_ID || '',
-      clientSecret: process.env.LINKEDIN_CLIENT_SECRET || '',
-      redirectUri: process.env.LINKEDIN_REDIRECT_URI || ''
+      clientId: oauthCredentials.LINKEDIN_CLIENT_ID || '',
+      clientSecret: oauthCredentials.LINKEDIN_CLIENT_SECRET || '',
+      redirectUri: oauthCredentials.LINKEDIN_REDIRECT_URI || ''
     };
 
     if (!this.config.clientId || !this.config.clientSecret) {
@@ -274,9 +309,9 @@ export class FacebookOAuthService {
 
   constructor() {
     this.config = {
-      clientId: process.env.FACEBOOK_APP_ID || '',
-      clientSecret: process.env.FACEBOOK_APP_SECRET || '',
-      redirectUri: process.env.FACEBOOK_REDIRECT_URI || ''
+      clientId: oauthCredentials.FACEBOOK_APP_ID || '',
+      clientSecret: oauthCredentials.FACEBOOK_APP_SECRET || '',
+      redirectUri: oauthCredentials.FACEBOOK_REDIRECT_URI || ''
     };
 
     if (!this.config.clientId || !this.config.clientSecret) {
@@ -384,9 +419,9 @@ export class InstagramOAuthService {
 
   constructor() {
     this.config = {
-      clientId: process.env.INSTAGRAM_CLIENT_ID || '',
-      clientSecret: process.env.INSTAGRAM_CLIENT_SECRET || '',
-      redirectUri: process.env.INSTAGRAM_REDIRECT_URI || ''
+      clientId: oauthCredentials.INSTAGRAM_CLIENT_ID || '',
+      clientSecret: oauthCredentials.INSTAGRAM_CLIENT_SECRET || '',
+      redirectUri: oauthCredentials.INSTAGRAM_REDIRECT_URI || ''
     };
 
     if (!this.config.clientId || !this.config.clientSecret) {
