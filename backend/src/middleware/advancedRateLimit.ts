@@ -174,10 +174,10 @@ export const rateLimitConfigs = {
     message: 'Too many API requests, please try again later.'
   }),
 
-  // Authentication endpoints (stricter)
+  // Authentication endpoints (stricter in production, relaxed in development)
   auth: createAdvancedRateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    maxRequests: 10,
+    maxRequests: process.env.NODE_ENV === 'production' ? 10 : 100, // More lenient in development
     keyGenerator: keyGenerators.byIP,
     message: 'Too many authentication attempts, please try again later.'
   }),

@@ -27,7 +27,7 @@ import { requestLogger } from './middleware/requestLogger.js';
 import { authMiddleware } from './middleware/auth.js';
 import { sanitizers } from './middleware/inputSanitization.js';
 import { csrfTokenGenerator, getCsrfToken } from './middleware/csrfProtection.js';
-import { smartRateLimit } from './middleware/advancedRateLimit.js';
+import { smartRateLimit, clearRateLimitStore } from './middleware/advancedRateLimit.js';
 import { comprehensiveSecurityHeaders } from './middleware/securityHeaders.js';
 
 // Import services
@@ -83,6 +83,17 @@ app.get('/health', (req, res) => {
     environment: process.env.NODE_ENV || 'development'
   });
 });
+
+// Development endpoint to clear rate limits
+if (process.env.NODE_ENV !== 'production') {
+  app.post('/dev/clear-rate-limits', (req, res) => {
+    clearRateLimitStore();
+    res.status(200).json({
+      message: 'Rate limit store cleared successfully',
+      timestamp: new Date().toISOString()
+    });
+  });
+}
 
 // CSRF token endpoint
 app.get('/api/v1/csrf-token', getCsrfToken);
