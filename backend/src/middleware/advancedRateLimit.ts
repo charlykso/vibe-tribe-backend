@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { RateLimitError } from './errorHandler';
+import { RateLimitError } from './errorHandler.js';
 
 interface AuthenticatedRequest extends Request {
   user?: {

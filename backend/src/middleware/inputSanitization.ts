@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import DOMPurify from 'isomorphic-dompurify';
 import validator from 'validator';
-import { ValidationError } from './errorHandler';
+import { ValidationError } from './errorHandler.js';
 
 // Configuration for different sanitization levels
 export const SanitizationLevel = {

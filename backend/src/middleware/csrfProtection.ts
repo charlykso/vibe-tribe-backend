@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
-import { UnauthorizedError } from './errorHandler';
+import { UnauthorizedError } from './errorHandler.js';
 
 interface CSRFRequest extends Request {
   csrfToken?: string;
