@@ -33,7 +33,7 @@ import { comprehensiveSecurityHeaders } from './middleware/securityHeaders.js';
 // Import services
 import { initializeDatabase, initializeCollections } from './services/database.js';
 import { initializeWebSocket } from './services/websocket.js';
-// import { initializeQueues, shutdownQueues } from './services/queue.js'; // Disabled for deployment
+import { initializeQueues, shutdownQueues } from './services/queue.js';
 import { initializeCronJobs, stopCronJobs } from './services/cron.js';
 
 const app = express();
@@ -128,9 +128,9 @@ async function startServer() {
     initializeWebSocket(io);
     console.log('✅ WebSocket initialized successfully');
 
-    // Initialize Queues (disabled for deployment)
-    // initializeQueues();
-    console.log('⚠️ Queue system disabled for deployment');
+    // Initialize Queues
+    initializeQueues();
+    console.log('✅ Queue system initialized successfully');
 
     // Initialize Cron Jobs
     initializeCronJobs();
@@ -154,7 +154,7 @@ async function startServer() {
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down gracefully');
   stopCronJobs();
-  // await shutdownQueues(); // Disabled for deployment
+  await shutdownQueues();
   server.close(() => {
     console.log('Process terminated');
   });
@@ -163,7 +163,7 @@ process.on('SIGTERM', async () => {
 process.on('SIGINT', async () => {
   console.log('SIGINT received, shutting down gracefully');
   stopCronJobs();
-  // await shutdownQueues(); // Disabled for deployment
+  await shutdownQueues();
   server.close(() => {
     console.log('Process terminated');
   });
