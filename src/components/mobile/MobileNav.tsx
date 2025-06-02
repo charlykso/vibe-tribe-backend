@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, X, Home, Edit, Calendar, Inbox, Users, BarChart3, Settings, MessageCircle, CheckCircle } from 'lucide-react';
+import { Menu, X, Home, Edit, Calendar, Inbox, Users, BarChart3, Settings, MessageCircle, CheckCircle, Link } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ const navigationItems = [
   { id: 'dashboard', label: 'Dashboard', icon: Home },
   { id: 'post-composer', label: 'Compose', icon: Edit },
   { id: 'scheduler', label: 'Schedule', icon: Calendar },
+  { id: 'platforms', label: 'Connect Accounts', icon: Link },
   { id: 'inbox', label: 'Inbox', icon: Inbox },
   { id: 'team-chat', label: 'Team Chat', icon: MessageCircle },
   { id: 'approval-workflows', label: 'Approvals', icon: CheckCircle },
@@ -101,7 +102,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, setActiveTab })
       {/* Bottom Navigation for Mobile */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-50">
         <div className="grid grid-cols-4 gap-1 p-2">
-          {navigationItems.slice(0, 4).map((item) => {
+          {[navigationItems[0], navigationItems[1], navigationItems[3], navigationItems[4]].map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             const showBadge = item.id === 'inbox' && unreadCount > 0;

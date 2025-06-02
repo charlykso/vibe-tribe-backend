@@ -228,17 +228,17 @@ export const PostComposer = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Create Post</h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-400">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Create Post</h1>
+        <p className="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400">
           Compose and schedule content across multiple platforms
         </p>
       </div>
 
       <Card className="bg-white dark:bg-gray-800">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
+        <CardHeader className="pb-4 sm:pb-6">
+          <CardTitle className="flex items-center justify-between text-lg sm:text-xl">
             <span>Post Composer</span>
             {isDraft && (
               <Badge variant="secondary" className="text-xs">
@@ -248,23 +248,29 @@ export const PostComposer = () => {
             )}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6">
           {/* Platform Selection */}
           <div>
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 block">
               Select Platforms
             </label>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               {platforms.map((platform) => (
                 <Button
                   key={platform.id}
                   variant={selectedPlatforms.includes(platform.id) ? "default" : "outline"}
                   size="sm"
                   onClick={() => handlePlatformToggle(platform.id)}
-                  className={`${selectedPlatforms.includes(platform.id) ? platform.color : ''}`}
+                  className={`
+                    flex-shrink-0 min-w-0
+                    text-xs sm:text-sm
+                    px-2 sm:px-3 py-2
+                    h-8 sm:h-9
+                    ${selectedPlatforms.includes(platform.id) ? platform.color : ''}
+                  `}
                 >
-                  <span className="mr-2">{platform.icon}</span>
-                  {platform.name}
+                  <span className="mr-1 sm:mr-2 text-sm">{platform.icon}</span>
+                  <span className="truncate">{platform.name}</span>
                 </Button>
               ))}
             </div>
@@ -276,11 +282,11 @@ export const PostComposer = () => {
               Post Type
             </label>
             <Tabs value={postType} onValueChange={(value) => setPostType(value as any)}>
-              <TabsList>
-                <TabsTrigger value="post">Regular Post</TabsTrigger>
-                <TabsTrigger value="thread">Thread</TabsTrigger>
-                <TabsTrigger value="story">Story</TabsTrigger>
-                <TabsTrigger value="article">Article</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto">
+                <TabsTrigger value="post" className="text-xs sm:text-sm py-2">Regular Post</TabsTrigger>
+                <TabsTrigger value="thread" className="text-xs sm:text-sm py-2">Thread</TabsTrigger>
+                <TabsTrigger value="story" className="text-xs sm:text-sm py-2">Story</TabsTrigger>
+                <TabsTrigger value="article" className="text-xs sm:text-sm py-2">Article</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -320,17 +326,18 @@ export const PostComposer = () => {
             />
 
             {/* Character Counters */}
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-2 sm:gap-4">
               {selectedPlatforms.map((platformId) => {
                 const platform = platforms.find(p => p.id === platformId);
                 const status = getCharacterStatus(platformId);
                 const remaining = getCharacterCount(platformId) - content.length;
 
                 return (
-                  <div key={platformId} className="flex items-center space-x-2">
-                    <span className="text-sm">{platform?.icon} {platform?.name}:</span>
-                    <span className={`text-sm font-medium ${status.color}`}>
-                      {remaining} chars
+                  <div key={platformId} className="flex items-center space-x-1 sm:space-x-2 bg-gray-50 dark:bg-gray-700 px-2 py-1 rounded-md">
+                    <span className="text-xs sm:text-sm">{platform?.icon}</span>
+                    <span className="text-xs sm:text-sm font-medium">{platform?.name}:</span>
+                    <span className={`text-xs sm:text-sm font-medium ${status.color}`}>
+                      {remaining}
                     </span>
                   </div>
                 );
@@ -339,15 +346,15 @@ export const PostComposer = () => {
           </div>
           {/* Quick Actions */}
           {showEmojiPicker && (
-            <Card className="p-4">
-              <div className="grid grid-cols-8 gap-2">
+            <Card className="p-3 sm:p-4">
+              <div className="grid grid-cols-6 sm:grid-cols-8 gap-1 sm:gap-2">
                 {['😀', '😂', '😍', '🤔', '👍', '❤️', '🔥', '💯', '🎉', '👏', '🚀', '💪', '🌟', '✨', '🎯', '📈'].map((emoji) => (
                   <Button
                     key={emoji}
                     variant="ghost"
                     size="sm"
                     onClick={() => insertEmoji(emoji)}
-                    className="text-lg"
+                    className="text-base sm:text-lg h-8 sm:h-9 w-8 sm:w-9 p-0"
                   >
                     {emoji}
                   </Button>
@@ -357,7 +364,7 @@ export const PostComposer = () => {
           )}
 
           {showHashtagSuggestions && (
-            <Card className="p-4">
+            <Card className="p-3 sm:p-4">
               <div className="flex flex-wrap gap-2">
                 {hashtagSuggestions.map((hashtag) => (
                   <Button
@@ -365,6 +372,7 @@ export const PostComposer = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => insertHashtag(hashtag)}
+                    className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3"
                   >
                     {hashtag}
                   </Button>
@@ -374,27 +382,54 @@ export const PostComposer = () => {
           )}
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-4 border-t">
-            <div className="flex items-center space-x-2">
-              <Button variant="outline" onClick={saveDraft}>
-                <Save className="w-4 h-4 mr-2" />
-                Save Draft
-              </Button>
-              <Button variant="outline">
-                <Eye className="w-4 h-4 mr-2" />
-                Preview
-              </Button>
+          <div className="pt-4 border-t">
+            {/* Mobile Layout - Stacked */}
+            <div className="flex flex-col space-y-3 sm:hidden">
+              <div className="flex items-center space-x-2">
+                <Button variant="outline" onClick={saveDraft} className="flex-1">
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Draft
+                </Button>
+                <Button variant="outline" className="flex-1">
+                  <Eye className="w-4 h-4 mr-2" />
+                  Preview
+                </Button>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button variant="outline" className="flex-1">
+                  <Clock className="w-4 h-4 mr-2" />
+                  Schedule
+                </Button>
+                <Button onClick={handlePublish} className="flex-1">
+                  <Send className="w-4 h-4 mr-2" />
+                  Publish Now
+                </Button>
+              </div>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Button variant="outline">
-                <Clock className="w-4 h-4 mr-2" />
-                Schedule
-              </Button>
-              <Button onClick={handlePublish}>
-                <Send className="w-4 h-4 mr-2" />
-                Publish Now
-              </Button>
+            {/* Desktop Layout - Side by Side */}
+            <div className="hidden sm:flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Button variant="outline" onClick={saveDraft}>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Draft
+                </Button>
+                <Button variant="outline">
+                  <Eye className="w-4 h-4 mr-2" />
+                  Preview
+                </Button>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Button variant="outline">
+                  <Clock className="w-4 h-4 mr-2" />
+                  Schedule
+                </Button>
+                <Button onClick={handlePublish}>
+                  <Send className="w-4 h-4 mr-2" />
+                  Publish Now
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>

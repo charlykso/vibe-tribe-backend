@@ -236,6 +236,75 @@ app.post('/api/v1/posts/:id/publish', async (req: Request, res: Response) => {
   }
 });
 
+// Mock social accounts endpoints
+app.get('/api/v1/social-accounts', async (req: Request, res: Response) => {
+  const mockAccounts = [
+    {
+      id: '1',
+      platform: 'twitter',
+      username: '@johndoe',
+      display_name: 'John Doe',
+      avatar_url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+      permissions: ['read', 'write'],
+      is_active: true,
+      last_sync_at: '2024-01-15T10:00:00Z',
+      created_at: '2024-01-01T00:00:00Z',
+    },
+    {
+      id: '2',
+      platform: 'linkedin',
+      username: 'john-doe-123',
+      display_name: 'John Doe',
+      avatar_url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+      permissions: ['read', 'write'],
+      is_active: true,
+      last_sync_at: '2024-01-15T09:30:00Z',
+      created_at: '2024-01-01T00:00:00Z',
+    }
+  ];
+
+  res.json({
+    accounts: mockAccounts,
+    total: mockAccounts.length
+  });
+});
+
+// Mock OAuth initiate endpoint
+app.post('/api/v1/oauth/initiate', async (req: Request, res: Response) => {
+  try {
+    const { platform } = req.body;
+
+    if (!platform) {
+      return res.status(400).json({
+        error: 'Platform is required'
+      });
+    }
+
+    // Mock OAuth URLs for different platforms
+    const authUrls = {
+      twitter: 'https://twitter.com/i/oauth2/authorize?demo=true',
+      linkedin: 'https://www.linkedin.com/oauth/v2/authorization?demo=true',
+      facebook: 'https://www.facebook.com/v18.0/dialog/oauth?demo=true',
+      instagram: 'https://api.instagram.com/oauth/authorize?demo=true'
+    };
+
+    const authUrl = authUrls[platform as keyof typeof authUrls] || 'https://example.com/oauth';
+
+    res.json({
+      authUrl,
+      state: `mock-state-${Date.now()}`,
+      platform,
+      message: `Mock OAuth URL for ${platform} (demo mode)`
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to initiate OAuth',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // 404 handler
 app.use('/api/*', (req: Request, res: Response) => {
   res.status(404).json({
@@ -268,6 +337,8 @@ const server = app.listen(PORT, () => {
   console.log('  GET  /api/v1/posts - List posts');
   console.log('  POST /api/v1/posts - Create post');
   console.log('  POST /api/v1/posts/:id/publish - Publish post');
+  console.log('  GET  /api/v1/social-accounts - List connected accounts');
+  console.log('  POST /api/v1/oauth/initiate - Start OAuth flow');
   console.log('');
   console.log('✅ Ready for frontend integration!');
 });

@@ -42,9 +42,9 @@ export function IntegrationTest() {
       // Test 1: Backend Health Check
       updateTest('Backend Health Check', 'pending', 'Testing...');
       try {
-        const response = await fetch('http://localhost:3001/health');
+        const response = await fetch('http://localhost:3002/health');
         const data = await response.json();
-        updateTest('Backend Health Check', 'success', `Server running on port 3001`, data);
+        updateTest('Backend Health Check', 'success', `Server running on port 3002`, data);
       } catch (error) {
         updateTest('Backend Health Check', 'error', 'Backend server not available');
       }
