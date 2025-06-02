@@ -218,7 +218,7 @@ FIREBASE_TOKEN_URI=https://oauth2.googleapis.com/token
 REDIS_URL=redis://red-d0ul4iidbo4c73bdp700:6379
 
 # Email Service (READY) ✅
-SENDGRID_API_KEY=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
+SENDGRID_API_KEY=your_sendgrid_api_key_here
 FROM_EMAIL=nexsolve0charles@gmail.com
 
 # Security (READY)
