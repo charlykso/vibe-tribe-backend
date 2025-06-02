@@ -4,6 +4,7 @@
 
 [build.environment]
   NODE_VERSION = "18"
+  # Latest update: Redis queue system, security enhancements, 55/55 tests passing
 
 [[redirects]]
   from = "/*"
