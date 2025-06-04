@@ -1,20 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Search, 
   Filter, 
-  MoreVertical, 
   Reply, 
   Archive, 
   Trash2, 
   Star, 
-  Clock,
   CheckCircle,
   User,
   Send
@@ -39,11 +36,6 @@ interface Message {
   isArchived: boolean;
   conversationId: string;
   messageType: 'direct' | 'mention' | 'comment' | 'review';
-  attachments?: {
-    type: 'image' | 'video' | 'link';
-    url: string;
-    thumbnail?: string;
-  }[];
 }
 
 const mockMessages: Message[] = [
@@ -59,7 +51,7 @@ const mockMessages: Message[] = [
       verified: false
     },
     content: 'Hey @vibetrybe, loving the new features! When will the mobile app be available?',
-    timestamp: new Date(Date.now() - 15 * 60 * 1000), // 15 minutes ago
+    timestamp: new Date(Date.now() - 15 * 60 * 1000),
     isRead: false,
     isStarred: false,
     isArchived: false,
@@ -78,50 +70,12 @@ const mockMessages: Message[] = [
       verified: true
     },
     content: 'Great article about community management! Would love to collaborate on a project.',
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
     isRead: true,
     isStarred: true,
     isArchived: false,
     conversationId: 'conv_2',
     messageType: 'direct'
-  },
-  {
-    id: '3',
-    platform: 'instagram',
-    platformIcon: '📸',
-    platformColor: 'bg-pink-500',
-    sender: {
-      name: 'Mike Chen',
-      username: '@mikechen_photo',
-      avatar: '/api/placeholder/32/32',
-      verified: false
-    },
-    content: 'Amazing content strategy! Can you share more tips about engagement?',
-    timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
-    isRead: true,
-    isStarred: false,
-    isArchived: false,
-    conversationId: 'conv_3',
-    messageType: 'comment'
-  },
-  {
-    id: '4',
-    platform: 'facebook',
-    platformIcon: '👥',
-    platformColor: 'bg-blue-600',
-    sender: {
-      name: 'Lisa Wang',
-      username: 'lisa.wang.marketing',
-      avatar: '/api/placeholder/32/32',
-      verified: false
-    },
-    content: 'Your community management tools have transformed our social media strategy. Highly recommend!',
-    timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
-    isRead: false,
-    isStarred: false,
-    isArchived: false,
-    conversationId: 'conv_4',
-    messageType: 'review'
   }
 ];
 
@@ -132,9 +86,6 @@ export const UnifiedInbox = () => {
   const [filterPlatform, setFilterPlatform] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
-  const [replyText, setReplyText] = useState('');
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const filteredMessages = messages.filter(message => {
     const matchesSearch = message.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -191,47 +142,6 @@ export const UnifiedInbox = () => {
     toast.success('Message deleted');
   };
 
-  const handleReply = () => {
-    if (!replyText.trim() || !selectedMessage) return;
-    
-    // Simulate sending reply
-    toast.success('Reply sent successfully!');
-    setReplyText('');
-    
-    // Mark as read if replying
-    handleMarkAsRead(selectedMessage.id);
-  };
-
-  const loadMoreMessages = () => {
-    setIsLoadingMore(true);
-    
-    // Simulate loading more messages
-    setTimeout(() => {
-      const newMessages = Array.from({ length: 5 }, (_, i) => ({
-        id: `new_${Date.now()}_${i}`,
-        platform: ['twitter', 'linkedin', 'instagram', 'facebook'][Math.floor(Math.random() * 4)],
-        platformIcon: ['🐦', '💼', '📸', '👥'][Math.floor(Math.random() * 4)],
-        platformColor: ['bg-blue-500', 'bg-blue-700', 'bg-pink-500', 'bg-blue-600'][Math.floor(Math.random() * 4)],
-        sender: {
-          name: `User ${i + 1}`,
-          username: `@user${i + 1}`,
-          avatar: '/api/placeholder/32/32',
-          verified: Math.random() > 0.7
-        },
-        content: `This is a sample message ${i + 1} for testing infinite scroll functionality.`,
-        timestamp: new Date(Date.now() - (7 + i) * 60 * 60 * 1000),
-        isRead: Math.random() > 0.5,
-        isStarred: false,
-        isArchived: false,
-        conversationId: `conv_new_${i}`,
-        messageType: ['direct', 'mention', 'comment', 'review'][Math.floor(Math.random() * 4)] as any
-      }));
-      
-      setMessages(prev => [...prev, ...newMessages]);
-      setIsLoadingMore(false);
-    }, 1000);
-  };
-
   const formatTimeAgo = (date: Date) => {
     const now = new Date();
     const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
@@ -273,15 +183,8 @@ export const UnifiedInbox = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Unified Inbox</h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Manage messages from all your connected platforms
-          </p>
-        </div>
-        
+    <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center space-x-2">
           <Badge variant="secondary">
             {unreadCount} unread
@@ -294,7 +197,7 @@ export const UnifiedInbox = () => {
       </div>
 
       {/* Filters */}
-      <Card className="bg-white dark:bg-gray-800">
+      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
@@ -349,9 +252,9 @@ export const UnifiedInbox = () => {
         </CardContent>
       </Card>
 
+      {/* Messages List */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Messages List */}
-        <Card className="lg:col-span-2 bg-white dark:bg-gray-800">
+        <Card className="lg:col-span-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <CardHeader>
             <CardTitle>Messages ({filteredMessages.length})</CardTitle>
           </CardHeader>
@@ -464,27 +367,12 @@ export const UnifiedInbox = () => {
                   </p>
                 </div>
               )}
-              
-              {/* Load More Button */}
-              {filteredMessages.length > 0 && (
-                <div className="text-center pt-4">
-                  <Button 
-                    variant="outline" 
-                    onClick={loadMoreMessages}
-                    disabled={isLoadingMore}
-                  >
-                    {isLoadingMore ? 'Loading...' : 'Load More Messages'}
-                  </Button>
-                </div>
-              )}
-              
-              <div ref={messagesEndRef} />
             </div>
           </CardContent>
         </Card>
 
-        {/* Message Detail & Reply */}
-        <Card className="bg-white dark:bg-gray-800">
+        {/* Message Detail */}
+        <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <CardHeader>
             <CardTitle>
               {selectedMessage ? 'Message Details' : 'Select a Message'}
@@ -493,7 +381,6 @@ export const UnifiedInbox = () => {
           <CardContent>
             {selectedMessage ? (
               <div className="space-y-4">
-                {/* Sender Info */}
                 <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                   <Avatar>
                     <AvatarImage src={selectedMessage.sender.avatar} />
@@ -515,7 +402,6 @@ export const UnifiedInbox = () => {
                   </div>
                 </div>
 
-                {/* Message Content */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-500">
@@ -525,29 +411,6 @@ export const UnifiedInbox = () => {
                   </div>
                   <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
                     <p className="whitespace-pre-wrap">{selectedMessage.content}</p>
-                  </div>
-                </div>
-
-                {/* Reply Section */}
-                <div className="space-y-3 pt-4 border-t">
-                  <h4 className="font-medium">Reply</h4>
-                  <Textarea
-                    placeholder="Type your reply..."
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    className="min-h-[100px]"
-                  />
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm">
-                        <Clock className="w-4 h-4 mr-2" />
-                        Schedule
-                      </Button>
-                    </div>
-                    <Button onClick={handleReply} disabled={!replyText.trim()}>
-                      <Send className="w-4 h-4 mr-2" />
-                      Send Reply
-                    </Button>
                   </div>
                 </div>
               </div>
@@ -560,7 +423,7 @@ export const UnifiedInbox = () => {
                   No message selected
                 </h3>
                 <p className="text-gray-500 dark:text-gray-400">
-                  Choose a message from the list to view details and reply
+                  Choose a message from the list to view details
                 </p>
               </div>
             )}

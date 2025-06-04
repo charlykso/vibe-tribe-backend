@@ -180,13 +180,7 @@ export const DraftManager = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Draft Manager</h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-400">
-          Manage your drafts and templates
-        </p>
-      </div>
+    <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
 
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
         <TabsList>

@@ -162,18 +162,12 @@ export const PostScheduler = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Post Scheduler</h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Schedule and manage your content calendar
-          </p>
-        </div>
-
-        <div className="flex items-center space-x-4">
+    <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
+      {/* Controls */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
           <Select value={selectedTimezone} onValueChange={setSelectedTimezone}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-full sm:w-48">
               <SelectValue placeholder="Select timezone" />
             </SelectTrigger>
             <SelectContent>
@@ -185,8 +179,8 @@ export const PostScheduler = () => {
             </SelectContent>
           </Select>
 
-          <Select value={calendarView} onValueChange={(value) => setCalendarView(value as any)}>
-            <SelectTrigger className="w-32">
+          <Select value={calendarView} onValueChange={(value) => setCalendarView(value as 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay')}>
+            <SelectTrigger className="w-full sm:w-32">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

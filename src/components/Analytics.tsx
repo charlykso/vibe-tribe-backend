@@ -128,14 +128,10 @@ export const Analytics = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Analytics</h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">Track performance metrics and insights across all platforms</p>
-        </div>
-
-        <div className="flex items-center space-x-4">
+    <div className="w-full max-w-none space-y-6">
+      {/* Controls Section */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           {/* Date Range Selector */}
           <div className="flex items-center space-x-2">
             <Button
@@ -212,19 +208,26 @@ export const Analytics = () => {
             </SelectContent>
           </Select>
 
-          {/* Export Button */}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            <span className="ml-2 hidden sm:inline">Refresh</span>
+          </Button>
           <Button variant="outline" size="sm" onClick={handleExportData}>
-            <Download className="w-4 h-4 mr-2" />
-            Export
+            <Download className="w-4 h-4" />
+            <span className="ml-2 hidden sm:inline">Export</span>
           </Button>
         </div>
       </div>
 
-      {/* Date Range Display */}
+      {/* Current Filters Display */}
       <Card className="bg-white dark:bg-gray-800">
         <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary">
                 {dateRange === 'custom' && customDateFrom && customDateTo
                   ? `${format(customDateFrom, 'MMM dd')} - ${format(customDateTo, 'MMM dd')}`
@@ -240,11 +243,8 @@ export const Analytics = () => {
               )}
             </div>
 
-            <div className="flex items-center space-x-2 text-sm text-gray-500">
+            <div className="flex items-center text-sm text-gray-500">
               <span>Last updated: {new Date().toLocaleTimeString()}</span>
-              <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={loading}>
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-              </Button>
             </div>
           </div>
         </CardContent>
@@ -264,7 +264,7 @@ export const Analytics = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
           <Card className="bg-white dark:bg-gray-800">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -336,41 +336,43 @@ export const Analytics = () => {
       )}
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6">
         <Card className="bg-white dark:bg-gray-800">
           <CardHeader>
             <CardTitle className="text-gray-900 dark:text-white">Engagement Trends</CardTitle>
           </CardHeader>
-          <CardContent>
-            {engagementLoading ? (
-              <div className="flex items-center justify-center h-[300px]">
-                <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-              </div>
-            ) : engagementError ? (
-              <div className="flex items-center justify-center h-[300px]">
-                <div className="text-center">
-                  <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
-                  <p className="text-red-600 dark:text-red-400">Failed to load engagement data</p>
+          <CardContent className="p-4">
+            <div className="w-full overflow-hidden">
+              {engagementLoading ? (
+                <div className="flex items-center justify-center h-[250px] sm:h-[300px]">
+                  <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
                 </div>
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={engagementData || []}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey={(item) => item.likes + item.comments + item.shares}
-                    stroke="#3B82F6"
-                    strokeWidth={2}
-                    name="Engagement"
-                  />
-                  <Line type="monotone" dataKey="views" stroke="#10B981" strokeWidth={2} name="Views" />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
+              ) : engagementError ? (
+                <div className="flex items-center justify-center h-[250px] sm:h-[300px]">
+                  <div className="text-center">
+                    <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
+                    <p className="text-red-600 dark:text-red-400">Failed to load engagement data</p>
+                  </div>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={250} className="sm:!h-[300px]">
+                  <LineChart data={engagementData || []}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line
+                      type="monotone"
+                      dataKey={(item) => item.likes + item.comments + item.shares}
+                      stroke="#3B82F6"
+                      strokeWidth={2}
+                      name="Engagement"
+                    />
+                    <Line type="monotone" dataKey="views" stroke="#10B981" strokeWidth={2} name="Views" />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -378,25 +380,27 @@ export const Analytics = () => {
           <CardHeader>
             <CardTitle className="text-gray-900 dark:text-white">Platform Distribution</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={platformChartData.length > 0 ? platformChartData : platformData}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                  label={({ name, value }) => `${name}: ${value}`}
-                >
-                  {(platformChartData.length > 0 ? platformChartData : platformData).map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+          <CardContent className="p-4">
+            <div className="w-full overflow-hidden">
+              <ResponsiveContainer width="100%" height={250} className="sm:!h-[300px]">
+                <PieChart>
+                  <Pie
+                    data={platformChartData.length > 0 ? platformChartData : platformData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                    label={({ name, value }) => `${name}: ${value}`}
+                  >
+                    {(platformChartData.length > 0 ? platformChartData : platformData).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -406,13 +410,13 @@ export const Analytics = () => {
         <CardHeader>
           <CardTitle className="text-gray-900 dark:text-white">Top Performing Content</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4">
           <div className="space-y-4">
             {topPerformers.map((item, index) => (
-              <div key={index} className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-4">
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900 dark:text-white">{item.content}</p>
-                  <div className="flex space-x-4 mt-1">
+              <div key={index} className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-4 gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-gray-900 dark:text-white truncate">{item.content}</p>
+                  <div className="flex flex-wrap gap-4 mt-1">
                     <span className="text-sm text-gray-500 dark:text-gray-400">
                       {item.engagement} engagements
                     </span>
@@ -421,10 +425,10 @@ export const Analytics = () => {
                     </span>
                   </div>
                 </div>
-                <div className="text-right">
-                  <TrendingUp className="h-4 w-4 text-green-600 inline" />
+                <div className="flex items-center text-right">
+                  <TrendingUp className="h-4 w-4 text-green-600" />
                   <span className="text-sm text-green-600 ml-1">
-                    {((item.engagement / item.reach) * 100).toFixed(1)}%
+                    {item.reach > 0 ? ((item.engagement / item.reach) * 100).toFixed(1) : '0.0'}%
                   </span>
                 </div>
               </div>

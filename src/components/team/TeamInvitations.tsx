@@ -22,13 +22,7 @@ export const TeamInvitations: React.FC<TeamInvitationsProps> = ({ className }) =
     <div className={`space-y-6 ${className || ''}`}>
       {/* Header Section */}
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Team Management</h2>
-          <p className="mt-1 text-gray-600 dark:text-gray-400">
-            Invite team members and manage access to your organization
-          </p>
-        </div>
-        
+
         <Button onClick={() => setInviteDialogOpen(true)}>
           <UserPlus className="w-4 h-4 mr-2" />
           Invite Member

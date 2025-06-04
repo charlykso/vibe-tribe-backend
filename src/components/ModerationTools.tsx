@@ -81,11 +81,6 @@ export const ModerationTools = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Moderation Tools</h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-400">Manage content moderation and community safety</p>
-      </div>
-
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {moderationStats.map((stat, index) => (

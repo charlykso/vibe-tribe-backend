@@ -1,4 +1,4 @@
-// Mock auth service - no external dependencies
+// Real auth service - connects to VibeTribe backend API
 
 
 export interface User {
@@ -37,7 +37,7 @@ export interface ResetPasswordData {
 
 
 export class AuthService {
-  private static readonly API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
+  private static readonly API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3004/api/v1';
 
   static async login(credentials: LoginCredentials): Promise<{ user: User; token: string }> {
     const response = await fetch(`${this.API_URL}/auth/login`, {
@@ -181,17 +181,17 @@ export class AuthService {
     }
 
     try {
-      // Basic JWT format validation (header.payload.signature)
-      const parts = token.split('.');
-      if (parts.length !== 3) {
+      // Check for our custom JWT-like format: jwt-{base64_payload}
+      if (!token.startsWith('jwt-')) {
         return false;
       }
 
-      // Check if payload can be decoded (basic validation)
-      const payload = JSON.parse(atob(parts[1]));
+      // Extract and decode the payload
+      const base64Payload = token.substring(4); // Remove 'jwt-' prefix
+      const payload = JSON.parse(atob(base64Payload));
 
       // Check if token has expiration and is not expired
-      if (payload.exp && payload.exp * 1000 < Date.now()) {
+      if (payload.exp && payload.exp < Date.now()) {
         return false;
       }
 

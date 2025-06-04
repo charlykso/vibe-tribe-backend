@@ -109,11 +109,6 @@ export const MemberManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Member Management</h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-400">Manage and track your community members</p>
-      </div>
-
       {/* Search and Filter */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">

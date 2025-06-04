@@ -9,13 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Search,
-  Filter,
   MoreVertical,
   UserPlus,
-  UserMinus,
   Shield,
   Flag,
-  MessageSquare,
   TrendingUp,
   Users,
   Clock,
@@ -27,7 +24,6 @@ import {
 import { toast } from 'sonner';
 import { InviteMemberDialog } from '@/components/team/InviteMemberDialog';
 import { CommunitiesService, CommunityMember, ModerationItem } from '@/lib/services/communities';
-import { UsersService } from '@/lib/services/users';
 
 // For backward compatibility with existing UI, we'll map CommunityMember to Member
 interface Member {
@@ -272,21 +268,15 @@ export const CommunityManagement = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Community Management</h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Manage your community members and moderate content
-          </p>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" onClick={() => setInviteDialogOpen(true)}>
+    <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
+      {/* Action Buttons */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+          <Button variant="outline" onClick={() => setInviteDialogOpen(true)} className="w-full sm:w-auto">
             <UserPlus className="w-4 h-4 mr-2" />
             Invite Members
           </Button>
-          <Button>
+          <Button className="w-full sm:w-auto">
             <Shield className="w-4 h-4 mr-2" />
             Moderation Settings
           </Button>
@@ -294,123 +284,138 @@ export const CommunityManagement = () => {
       </div>
 
       {/* Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-white dark:bg-gray-800">
-          <CardContent className="p-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total Members</p>
-                <p className="text-2xl font-bold text-blue-600">{members.length}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">Total Members</p>
+                <p className="text-xl sm:text-2xl font-bold text-blue-600">{members.length}</p>
               </div>
-              <Users className="w-8 h-8 text-blue-500" />
+              <div className="flex-shrink-0 ml-2">
+                <Users className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-gray-800">
-          <CardContent className="p-4">
+        <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Active Members</p>
-                <p className="text-2xl font-bold text-green-600">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">Active Members</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-600">
                   {members.filter(m => m.status === 'active').length}
                 </p>
               </div>
-              <TrendingUp className="w-8 h-8 text-green-500" />
+              <div className="flex-shrink-0 ml-2">
+                <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-green-500" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-gray-800">
-          <CardContent className="p-4">
+        <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Pending Approval</p>
-                <p className="text-2xl font-bold text-yellow-600">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">Pending Approval</p>
+                <p className="text-xl sm:text-2xl font-bold text-yellow-600">
                   {members.filter(m => m.status === 'pending').length}
                 </p>
               </div>
-              <Clock className="w-8 h-8 text-yellow-500" />
+              <div className="flex-shrink-0 ml-2">
+                <Clock className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-500" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-gray-800">
-          <CardContent className="p-4">
+        <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Moderation Queue</p>
-                <p className="text-2xl font-bold text-red-600">{pendingModerationCount}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">Moderation Queue</p>
+                <p className="text-xl sm:text-2xl font-bold text-red-600">{pendingModerationCount}</p>
               </div>
-              <Flag className="w-8 h-8 text-red-500" />
+              <div className="flex-shrink-0 ml-2">
+                <Flag className="w-6 h-6 sm:w-8 sm:h-8 text-red-500" />
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
-        <TabsList>
-          <TabsTrigger value="members" className="flex items-center">
-            <Users className="w-4 h-4 mr-2" />
-            Members ({members.length})
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'members' | 'moderation')}>
+        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:grid-cols-none lg:flex">
+          <TabsTrigger value="members" className="flex items-center gap-2 text-sm">
+            <Users className="w-4 h-4" />
+            <span className="hidden sm:inline">Members</span>
+            <span className="sm:hidden">({members.length})</span>
+            <span className="hidden sm:inline">({members.length})</span>
           </TabsTrigger>
-          <TabsTrigger value="moderation" className="flex items-center">
-            <Shield className="w-4 h-4 mr-2" />
-            Moderation Queue ({pendingModerationCount})
+          <TabsTrigger value="moderation" className="flex items-center gap-2 text-sm">
+            <Shield className="w-4 h-4" />
+            <span className="hidden sm:inline">Moderation Queue</span>
+            <span className="sm:hidden">Queue</span>
+            <span className="hidden sm:inline">({pendingModerationCount})</span>
+            <span className="sm:hidden">({pendingModerationCount})</span>
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="members" className="space-y-6">
+        <TabsContent value="members" className="space-y-4 sm:space-y-6">
           {/* Filters */}
-          <Card className="bg-white dark:bg-gray-800">
-            <CardContent className="p-4">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
+          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <div className="flex-1 min-w-0">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <Input
                       placeholder="Search members..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
+                      className="pl-10 text-sm"
                     />
                   </div>
                 </div>
 
-                <Select value={filterRole} onValueChange={setFilterRole}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Filter by role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Roles</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="moderator">Moderator</SelectItem>
-                    <SelectItem value="member">Member</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-2">
+                  <Select value={filterRole} onValueChange={setFilterRole}>
+                    <SelectTrigger className="w-full sm:w-36 text-sm">
+                      <SelectValue placeholder="Filter by role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Roles</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="moderator">Moderator</SelectItem>
+                      <SelectItem value="member">Member</SelectItem>
+                    </SelectContent>
+                  </Select>
 
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="banned">Banned</SelectItem>
-                  </SelectContent>
-                </Select>
+                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                    <SelectTrigger className="w-full sm:w-36 text-sm">
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="banned">Banned</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Members List */}
-          <Card className="bg-white dark:bg-gray-800">
-            <CardHeader>
-              <CardTitle>
-                Members ({membersLoading ? '...' : filteredMembers.length})
-                {membersLoading && <Loader2 className="w-4 h-4 animate-spin inline ml-2" />}
+          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <CardHeader className="pb-3 sm:pb-4">
+              <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
+                <span>Members ({membersLoading ? '...' : filteredMembers.length})</span>
+                {membersLoading && <Loader2 className="w-4 h-4 animate-spin" />}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -444,40 +449,44 @@ export const CommunityManagement = () => {
                   <p className="text-gray-600 dark:text-gray-400">No members found</p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {filteredMembers.map((member) => (
-                  <div key={member.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center space-x-4">
-                      <Avatar>
+                  <div key={member.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900/50">
+                    <div className="flex items-center space-x-3 sm:space-x-4 mb-3 sm:mb-0">
+                      <Avatar className="w-10 h-10 sm:w-12 sm:h-12">
                         <AvatarImage src={member.avatar} />
-                        <AvatarFallback>{member.name[0]}</AvatarFallback>
+                        <AvatarFallback className="text-sm">{member.name[0]}</AvatarFallback>
                       </Avatar>
 
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <h3 className="font-medium">{member.name}</h3>
-                          {getRoleBadge(member.role)}
-                          {getStatusBadge(member.status)}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
+                          <h3 className="font-medium text-sm sm:text-base truncate">{member.name}</h3>
+                          <div className="flex items-center gap-1 sm:gap-2">
+                            {getRoleBadge(member.role)}
+                            {getStatusBadge(member.status)}
+                          </div>
                         </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">
                           {member.username} • {member.email}
                         </p>
-                        <div className="flex items-center space-x-4 text-xs text-gray-500 mt-1">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-gray-500 mt-1">
                           <span>{member.posts} posts</span>
                           <span>{member.engagement}% engagement</span>
-                          <span>Last active: {formatTimeAgo(member.lastActive)}</span>
+                          <span className="hidden sm:inline">Last active: {formatTimeAgo(member.lastActive)}</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center justify-end gap-2 sm:gap-2 flex-shrink-0">
                       {member.status === 'pending' && (
                         <Button
                           size="sm"
                           onClick={() => handleMemberAction(member.id, 'approve')}
+                          className="text-xs"
                         >
-                          <CheckCircle className="w-4 h-4 mr-1" />
-                          Approve
+                          <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                          <span className="hidden sm:inline">Approve</span>
+                          <span className="sm:hidden">✓</span>
                         </Button>
                       )}
 
@@ -486,23 +495,27 @@ export const CommunityManagement = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleMemberAction(member.id, 'unban')}
+                          className="text-xs"
                         >
-                          <CheckCircle className="w-4 h-4 mr-1" />
-                          Unban
+                          <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                          <span className="hidden sm:inline">Unban</span>
+                          <span className="sm:hidden">↩</span>
                         </Button>
                       ) : (
                         <Button
                           variant="destructive"
                           size="sm"
                           onClick={() => handleMemberAction(member.id, 'ban')}
+                          className="text-xs"
                         >
-                          <XCircle className="w-4 h-4 mr-1" />
-                          Ban
+                          <XCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                          <span className="hidden sm:inline">Ban</span>
+                          <span className="sm:hidden">✕</span>
                         </Button>
                       )}
 
-                      <Button variant="ghost" size="sm">
-                        <MoreVertical className="w-4 h-4" />
+                      <Button variant="ghost" size="sm" className="p-1 sm:p-2">
+                        <MoreVertical className="w-3 h-3 sm:w-4 sm:h-4" />
                       </Button>
                     </div>
                   </div>
@@ -513,12 +526,12 @@ export const CommunityManagement = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="moderation" className="space-y-6">
-          <Card className="bg-white dark:bg-gray-800">
-            <CardHeader>
-              <CardTitle>
-                Moderation Queue ({moderationLoading ? '...' : moderationQueue.length})
-                {moderationLoading && <Loader2 className="w-4 h-4 animate-spin inline ml-2" />}
+        <TabsContent value="moderation" className="space-y-4 sm:space-y-6">
+          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <CardHeader className="pb-3 sm:pb-4">
+              <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
+                <span>Moderation Queue ({moderationLoading ? '...' : moderationQueue.length})</span>
+                {moderationLoading && <Loader2 className="w-4 h-4 animate-spin" />}
               </CardTitle>
             </CardHeader>
             <CardContent>

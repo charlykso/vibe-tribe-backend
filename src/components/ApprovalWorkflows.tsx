@@ -182,11 +182,6 @@ export const ApprovalWorkflows: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Approval Workflows</h1>
-          <p className="text-gray-600 dark:text-gray-400">Manage content approval requests and workflows</p>
-        </div>
-        
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="w-48">
             <SelectValue placeholder="Filter by status" />

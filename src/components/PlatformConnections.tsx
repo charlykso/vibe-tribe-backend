@@ -408,84 +408,86 @@ export const PlatformConnections = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Platform Connections</h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-400">
-          Manage your social media platform connections and permissions
-        </p>
-      </div>
+    <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
 
       {/* Connection Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-white dark:bg-gray-800">
-          <CardContent className="p-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Connected</p>
-                <p className="text-2xl font-bold text-green-600">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">Connected</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-600">
                   {combinedPlatforms.filter(p => p.isConnected).length}
                 </p>
               </div>
-              <CheckCircle className="w-8 h-8 text-green-500" />
+              <div className="flex-shrink-0 ml-2">
+                <CheckCircle className="w-6 h-6 sm:w-8 sm:h-8 text-green-500" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-gray-800">
-          <CardContent className="p-4">
+        <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Available Platforms</p>
-                <p className="text-2xl font-bold text-blue-600">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">Available Platforms</p>
+                <p className="text-xl sm:text-2xl font-bold text-blue-600">
                   {combinedPlatforms.length}
                 </p>
               </div>
-              <Users className="w-8 h-8 text-blue-500" />
+              <div className="flex-shrink-0 ml-2">
+                <Users className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-gray-800">
-          <CardContent className="p-4">
+        <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total Followers</p>
-                <p className="text-2xl font-bold text-purple-600">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">Total Followers</p>
+                <p className="text-xl sm:text-2xl font-bold text-purple-600">
                   {formatNumber(combinedPlatforms.reduce((sum, platform) => sum + (platform.account?.followers || 0), 0))}
                 </p>
               </div>
-              <MessageSquare className="w-8 h-8 text-purple-500" />
+              <div className="flex-shrink-0 ml-2">
+                <MessageSquare className="w-6 h-6 sm:w-8 sm:h-8 text-purple-500" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-gray-800">
-          <CardContent className="p-4">
+        <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Ready to Connect</p>
-                <p className="text-2xl font-bold text-pink-600">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">Ready to Connect</p>
+                <p className="text-xl sm:text-2xl font-bold text-pink-600">
                   {combinedPlatforms.filter(p => !p.isConnected).length}
                 </p>
               </div>
-              <TrendingUp className="w-8 h-8 text-pink-500" />
+              <div className="flex-shrink-0 ml-2">
+                <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-pink-500" />
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Platform Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {loading ? (
           // Loading state
-          <div className="col-span-full flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-            <span className="ml-2 text-gray-600 dark:text-gray-400">Loading platforms...</span>
+          <div className="col-span-full flex items-center justify-center py-8 sm:py-12">
+            <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-blue-500" />
+            <span className="ml-2 text-sm sm:text-base text-gray-600 dark:text-gray-400">Loading platforms...</span>
           </div>
         ) : (
           combinedPlatforms.map((platform) => (
-            <Card key={platform.id} className="bg-white dark:bg-gray-800">
+            <Card key={platform.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">

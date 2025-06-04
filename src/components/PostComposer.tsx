@@ -1,14 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, Clock, Image, Smile, Hash, Send, Save, Eye } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Clock, Image, Smile, Hash, Send, Save, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { PostsService, CreatePostData } from '@/lib/services/posts';
-import { MediaService } from '@/lib/services/media';
 
 interface Platform {
   id: string;
@@ -59,7 +57,11 @@ const hashtagSuggestions = [
   '#digital', '#strategy', '#growth', '#brand', '#viral', '#trending'
 ];
 
-export const PostComposer = () => {
+interface PostComposerProps {
+  showHeader?: boolean;
+}
+
+export const PostComposer = ({ showHeader = false }: PostComposerProps) => {
   const [content, setContent] = useState('');
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['twitter']);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -165,7 +167,11 @@ export const PostComposer = () => {
       };
 
       const response = await PostsService.createPost(postData);
-      const post = response.data?.post!;
+      const post = response.data?.post;
+
+      if (!post) {
+        throw new Error('Failed to create post');
+      }
 
       // Publish immediately
       await PostsService.publishPost(post.id);
@@ -229,12 +235,14 @@ export const PostComposer = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Create Post</h1>
-        <p className="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400">
-          Compose and schedule content across multiple platforms
-        </p>
-      </div>
+      {showHeader && (
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Create Post</h1>
+          <p className="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400">
+            Compose and schedule content across multiple platforms
+          </p>
+        </div>
+      )}
 
       <Card className="bg-white dark:bg-gray-800">
         <CardHeader className="pb-4 sm:pb-6">
@@ -281,7 +289,7 @@ export const PostComposer = () => {
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 block">
               Post Type
             </label>
-            <Tabs value={postType} onValueChange={(value) => setPostType(value as any)}>
+            <Tabs value={postType} onValueChange={(value) => setPostType(value as 'post' | 'thread' | 'story' | 'article')}>
               <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto">
                 <TabsTrigger value="post" className="text-xs sm:text-sm py-2">Regular Post</TabsTrigger>
                 <TabsTrigger value="thread" className="text-xs sm:text-sm py-2">Thread</TabsTrigger>

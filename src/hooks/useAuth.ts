@@ -122,6 +122,7 @@ export const useAuth = () => {
 
       return { success: true };
     } catch (error) {
+      console.error('Logout error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Logout failed';
       setAuthState(prev => ({ ...prev, loading: false, error: errorMessage }));
 

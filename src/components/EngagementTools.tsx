@@ -87,11 +87,6 @@ export const EngagementTools = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Engagement Tools</h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-400">Create campaigns and boost community engagement</p>
-      </div>
-
       {/* Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {engagementMetrics.map((metric, index) => {

@@ -26,12 +26,7 @@ export const Settings = () => {
 
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-400">Manage your account, integrations, and preferences</p>
-      </div>
-
+    <div className="p-6">
       <Tabs defaultValue="general" className="space-y-6">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="general">General</TabsTrigger>

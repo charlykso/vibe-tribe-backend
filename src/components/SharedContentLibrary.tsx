@@ -8,25 +8,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Upload, 
-  Search, 
-  Filter, 
-  Download, 
-  Share2, 
-  Copy, 
-  Heart, 
-  Eye,
+import {
+  Upload,
+  Search,
+  Download,
+  Copy,
+  Heart,
   FileText,
   Image,
   Video,
   File,
   Plus,
-  MoreVertical,
-  Star,
-  Folder
+  Star
 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
 import { toast } from '@/components/ui/use-toast';
 
 interface ContentItem {
@@ -256,14 +250,56 @@ export const SharedContentLibrary: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-none space-y-6">
+      {/* Action Controls */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Content Library</h1>
-          <p className="text-gray-600 dark:text-gray-400">Shared assets and templates for your team</p>
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
+              placeholder="Search content..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 w-64"
+            />
+          </div>
+
+          {/* Category Filter */}
+          <Select value={filterCategory} onValueChange={setFilterCategory}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {categories.map(category => (
+                <SelectItem key={category} value={category}>
+                  {category}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Type Filter (for assets) */}
+          {activeTab === 'assets' && (
+            <Select value={filterType} onValueChange={setFilterType}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                {types.map(type => (
+                  <SelectItem key={type} value={type}>
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
-        
-        <div className="flex gap-2">
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-2">
           <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -336,50 +372,7 @@ export const SharedContentLibrary: React.FC = () => {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              placeholder="Search content and templates..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </div>
-        
-        <Select value={filterCategory} onValueChange={setFilterCategory}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filter by category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {categories.map(category => (
-              <SelectItem key={category} value={category}>
-                {category}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
 
-        {activeTab === 'assets' && (
-          <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              {types.map(type => (
-                <SelectItem key={type} value={type}>
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
@@ -388,7 +381,7 @@ export const SharedContentLibrary: React.FC = () => {
         </TabsList>
 
         <TabsContent value="assets" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
             {filteredContent.map((item) => (
               <Card key={item.id} className="hover:shadow-lg transition-shadow">
                 <CardContent className="p-4">
@@ -476,61 +469,64 @@ export const SharedContentLibrary: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
             {filteredTemplates.map((template) => (
               <Card key={template.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{template.title}</CardTitle>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                <CardHeader className="pb-3">
+                  <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-lg truncate">{template.title}</CardTitle>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
                         {template.description}
                       </p>
                     </div>
                     <Button
                       size="sm"
                       onClick={() => copyTemplate(template)}
+                      className="shrink-0"
                     >
                       <Copy className="w-4 h-4 mr-2" />
-                      Copy
+                      <span className="hidden sm:inline">Copy</span>
                     </Button>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-0">
                   <div className="space-y-4">
-                    <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-                      <pre className="text-sm whitespace-pre-wrap text-gray-900 dark:text-white line-clamp-4">
+                    <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg overflow-hidden">
+                      <pre className="text-sm whitespace-pre-wrap text-gray-900 dark:text-white line-clamp-4 overflow-hidden">
                         {template.content}
                       </pre>
                     </div>
-                    
-                    <div className="flex flex-wrap gap-1">
-                      {template.platform.map(platform => (
-                        <Badge key={platform} variant="outline" className="text-xs">
-                          {platform}
-                        </Badge>
-                      ))}
+
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-1">
+                        {template.platform.map(platform => (
+                          <Badge key={platform} variant="outline" className="text-xs">
+                            {platform}
+                          </Badge>
+                        ))}
+                      </div>
+
+                      <div className="flex flex-wrap gap-1">
+                        {template.tags.map(tag => (
+                          <Badge key={tag} variant="secondary" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                    
-                    <div className="flex flex-wrap gap-1">
-                      {template.tags.map(tag => (
-                        <Badge key={tag} variant="secondary" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                    
-                    <div className="flex items-center justify-between pt-2 border-t">
+
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-2 border-t gap-2">
                       <div className="flex items-center space-x-2">
                         <Avatar className="w-5 h-5">
                           <AvatarImage src={template.createdBy.avatar} />
                           <AvatarFallback>{template.createdBy.name[0]}</AvatarFallback>
                         </Avatar>
-                        <span className="text-xs text-gray-600 dark:text-gray-400">
+                        <span className="text-xs text-gray-600 dark:text-gray-400 truncate">
                           {template.createdBy.name}
                         </span>
                       </div>
-                      
+
                       <div className="flex items-center space-x-4 text-xs text-gray-500">
                         <span>{template.uses} uses</span>
                         <span>⭐ {template.rating}</span>

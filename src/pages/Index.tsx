@@ -45,7 +45,7 @@ const Index = () => {
       case 'dashboard':
         return <Dashboard />;
       case 'post-composer':
-        return <PostComposer />;
+        return <PostComposer showHeader={true} />;
       case 'scheduler':
         return <PostScheduler />;
       case 'drafts':

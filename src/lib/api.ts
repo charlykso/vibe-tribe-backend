@@ -19,7 +19,7 @@ class ApiClient {
   private defaultHeaders: Record<string, string>;
 
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/v1';
+    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3004/api/v1';
     this.defaultHeaders = {
       'Content-Type': 'application/json',
     };
@@ -172,6 +172,163 @@ class ApiClient {
 
 // Export singleton instance
 export const apiClient = new ApiClient();
+
+// Dashboard API types
+export interface DashboardMetrics {
+  totalMembers: number;
+  activeMembers: number;
+  messagesToday: number;
+  engagementRate: number;
+  growth?: {
+    members: number;
+    active: number;
+    messages: number;
+    engagement: number;
+  };
+}
+
+export interface Activity {
+  id: number;
+  type: string;
+  title: string;
+  time: string;
+  icon: string;
+}
+
+export interface Community {
+  name: string;
+  members: number;
+  status: string;
+  change: number;
+}
+
+export interface CommunityStats {
+  totalMembers: number;
+  activeMembers: number;
+  newMembersToday: number;
+  engagementRate: number;
+  communities: Community[];
+}
+
+// Mock data for fallback
+const mockMetrics: DashboardMetrics = {
+  totalMembers: 24847,
+  activeMembers: 18492,
+  messagesToday: 3847,
+  engagementRate: 74.8,
+  growth: {
+    members: 12.5,
+    active: 8.2,
+    messages: 23.1,
+    engagement: 4.3
+  }
+};
+
+const mockActivities: Activity[] = [
+  {
+    id: 1,
+    type: 'member_joined',
+    title: 'John Smith joined the community',
+    time: '2 minutes ago',
+    icon: 'Users'
+  },
+  {
+    id: 2,
+    type: 'engagement',
+    title: 'Post about product updates got 150+ reactions',
+    time: '15 minutes ago',
+    icon: 'Heart'
+  },
+  {
+    id: 3,
+    type: 'moderation',
+    title: 'Spam message auto-removed in #general',
+    time: '32 minutes ago',
+    icon: 'AlertTriangle'
+  },
+  {
+    id: 4,
+    type: 'milestone',
+    title: 'Community reached 25K members!',
+    time: '1 hour ago',
+    icon: 'CheckCircle'
+  }
+];
+
+const mockCommunityStats: CommunityStats = {
+  totalMembers: 24847,
+  activeMembers: 18492,
+  newMembersToday: 127,
+  engagementRate: 74.8,
+  communities: [
+    { name: 'Discord Community', members: 15420, status: 'healthy', change: 5.2 },
+    { name: 'Telegram Group', members: 8947, status: 'growing', change: 12.8 },
+    { name: 'Slack Workspace', members: 2340, status: 'stable', change: -2.1 }
+  ]
+};
+
+// Dashboard API functions with fallback to mock data
+export const dashboardApi = {
+  async getMetrics(): Promise<DashboardMetrics> {
+    try {
+      const response = await apiClient.get<DashboardMetrics>('/analytics/overview');
+      return response.data!;
+    } catch (error) {
+      console.warn('Backend not available, using mock data for metrics');
+      return mockMetrics;
+    }
+  },
+
+  async getActivity(): Promise<Activity[]> {
+    try {
+      const response = await apiClient.get<{ activities: Activity[] }>('/activity/recent');
+      return response.data!.activities;
+    } catch (error) {
+      console.warn('Backend not available, using mock data for activities');
+      return mockActivities;
+    }
+  },
+
+  async getCommunityStats(): Promise<CommunityStats> {
+    try {
+      const response = await apiClient.get<CommunityStats>('/community/stats');
+      return response.data!;
+    } catch (error) {
+      console.warn('Backend not available, using mock data for community stats');
+      return mockCommunityStats;
+    }
+  },
+};
+
+// Auth API functions
+export const authApi = {
+  async login(email: string, password: string) {
+    const response = await apiClient.post('/auth/login', { email, password });
+    return response.data;
+  },
+
+  async register(email: string, password: string, name: string) {
+    const response = await apiClient.post('/auth/register', { email, password, name });
+    return response.data;
+  },
+
+  async getCurrentUser() {
+    const response = await apiClient.get('/auth/me');
+    return response.data;
+  },
+
+  async logout() {
+    const response = await apiClient.post('/auth/logout');
+    return response.data;
+  },
+};
+
+// System API functions
+export const systemApi = {
+  async healthCheck(): Promise<boolean> {
+    return apiClient.healthCheck();
+  },
+};
 
 // Export types
 export type { ApiClient };

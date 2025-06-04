@@ -32,11 +32,6 @@ export const CommunityHealth = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Community Health</h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-400">Monitor and analyze your community's overall wellness</p>
-      </div>
-
       {/* Health Score Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 bg-white dark:bg-gray-800">
