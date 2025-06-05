@@ -1,0 +1,313 @@
+import admin from 'firebase-admin';
+import { getFirestore } from 'firebase-admin/firestore';
+import dotenv from 'dotenv';
+import path from 'path';
+// Load environment variables from root .env
+dotenv.config({ path: path.join(process.cwd(), '.env') });
+let db;
+// Mock Firestore for development
+const createMockFirestore = () => {
+    const collections = new Map();
+    const mockQuery = async (collectionName, filters = []) => {
+        const collection = collections.get(collectionName) || new Map();
+        let results = Array.from(collection.values());
+        // Apply basic filtering (simplified)
+        filters.forEach(filter => {
+            if (filter.operator === '==') {
+                results = results.filter(doc => doc[filter.field] === filter.value);
+            }
+            else if (filter.operator === '>=') {
+                results = results.filter(doc => doc[filter.field] >= filter.value);
+            }
+            else if (filter.operator === '<=') {
+                results = results.filter(doc => doc[filter.field] <= filter.value);
+            }
+        });
+        return {
+            docs: results.map(data => ({
+                id: data.id,
+                data: () => data,
+                exists: true
+            })),
+            size: results.length,
+            empty: results.length === 0
+        };
+    };
+    return {
+        collection: (name) => {
+            if (!collections.has(name)) {
+                collections.set(name, new Map());
+            }
+            return {
+                add: async (data) => {
+                    const id = `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                    const collection = collections.get(name);
+                    collection.set(id, { ...data, id });
+                    return {
+                        id,
+                        get: async () => ({
+                            id,
+                            exists: true,
+                            data: () => ({ ...data, id })
+                        })
+                    };
+                },
+                doc: (id) => ({
+                    get: async () => {
+                        const collection = collections.get(name);
+                        const data = collection.get(id);
+                        return {
+                            id,
+                            exists: !!data,
+                            data: () => data || null
+                        };
+                    },
+                    update: async (updates) => {
+                        const collection = collections.get(name);
+                        const existing = collection.get(id) || {};
+                        collection.set(id, { ...existing, ...updates, id });
+                        return { id };
+                    },
+                    set: async (data) => {
+                        const collection = collections.get(name);
+                        collection.set(id, { ...data, id });
+                        return { id };
+                    },
+                    delete: async () => {
+                        const collection = collections.get(name);
+                        collection.delete(id);
+                        return { id };
+                    }
+                }),
+                where: (field, operator, value) => ({
+                    where: (field2, operator2, value2) => ({
+                        where: (field3, operator3, value3) => ({
+                            orderBy: () => ({ limit: () => ({ offset: () => ({ get: () => mockQuery(name, [{ field, operator, value }, { field: field2, operator: operator2, value: value2 }, { field: field3, operator: operator3, value: value3 }]) }), get: () => mockQuery(name, [{ field, operator, value }, { field: field2, operator: operator2, value: value2 }, { field: field3, operator: operator3, value: value3 }]) }), get: () => mockQuery(name, [{ field, operator, value }, { field: field2, operator: operator2, value: value2 }, { field: field3, operator: operator3, value: value3 }]) }),
+                            limit: () => ({ offset: () => ({ get: () => mockQuery(name, [{ field, operator, value }, { field: field2, operator: operator2, value: value2 }, { field: field3, operator: operator3, value: value3 }]) }), get: () => mockQuery(name, [{ field, operator, value }, { field: field2, operator: operator2, value: value2 }, { field: field3, operator: operator3, value: value3 }]) }),
+                            get: () => mockQuery(name, [{ field, operator, value }, { field: field2, operator: operator2, value: value2 }, { field: field3, operator: operator3, value: value3 }])
+                        }),
+                        orderBy: () => ({ limit: () => ({ offset: () => ({ get: () => mockQuery(name, [{ field, operator, value }, { field: field2, operator: operator2, value: value2 }]) }), get: () => mockQuery(name, [{ field, operator, value }, { field: field2, operator: operator2, value: value2 }]) }), get: () => mockQuery(name, [{ field, operator, value }, { field: field2, operator: operator2, value: value2 }]) }),
+                        limit: () => ({ offset: () => ({ get: () => mockQuery(name, [{ field, operator, value }, { field: field2, operator: operator2, value: value2 }]) }), get: () => mockQuery(name, [{ field, operator, value }, { field: field2, operator: operator2, value: value2 }]) }),
+                        get: () => mockQuery(name, [{ field, operator, value }, { field: field2, operator: operator2, value: value2 }])
+                    }),
+                    orderBy: () => ({ limit: () => ({ offset: () => ({ get: () => mockQuery(name, [{ field, operator, value }]) }), get: () => mockQuery(name, [{ field, operator, value }]) }), get: () => mockQuery(name, [{ field, operator, value }]) }),
+                    limit: () => ({ offset: () => ({ get: () => mockQuery(name, [{ field, operator, value }]) }), get: () => mockQuery(name, [{ field, operator, value }]) }),
+                    get: () => mockQuery(name, [{ field, operator, value }])
+                }),
+                orderBy: () => ({ limit: () => ({ offset: () => ({ get: () => mockQuery(name, []) }), get: () => mockQuery(name, []) }), get: () => mockQuery(name, []) }),
+                limit: () => ({ offset: () => ({ get: () => mockQuery(name, []) }), get: () => mockQuery(name, []) }),
+                get: () => mockQuery(name, [])
+            };
+        }
+    };
+};
+export const initializeDatabase = async () => {
+    try {
+        // Check if Firebase Admin is already initialized
+        if (admin.apps.length === 0) {
+            // Try to use complete Firebase service account JSON first
+            let serviceAccount = null;
+            // Method 1: Complete Firebase service account JSON (Base64 encoded)
+            const firebaseServiceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
+            if (firebaseServiceAccountBase64) {
+                try {
+                    const serviceAccountJson = Buffer.from(firebaseServiceAccountBase64, 'base64').toString('utf8');
+                    serviceAccount = JSON.parse(serviceAccountJson);
+                    console.log('✅ Using complete Firebase service account JSON (Base64)');
+                }
+                catch (error) {
+                    console.warn('Failed to parse Firebase service account JSON, falling back to individual variables');
+                }
+            }
+            // Method 2: Individual environment variables (fallback)
+            if (!serviceAccount) {
+                // Handle private key formatting for different environments
+                let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+                // Try Base64 encoded key first (safer for environment variables)
+                const base64Key = process.env.FIREBASE_PRIVATE_KEY_BASE64;
+                if (base64Key) {
+                    try {
+                        privateKey = Buffer.from(base64Key, 'base64').toString('utf8');
+                        console.log('✅ Using Base64 encoded private key');
+                    }
+                    catch (error) {
+                        console.warn('Failed to decode Base64 private key, falling back to regular key');
+                    }
+                }
+                if (privateKey) {
+                    // Remove any surrounding quotes
+                    privateKey = privateKey.replace(/^["']|["']$/g, '');
+                    // Replace escaped newlines with actual newlines
+                    privateKey = privateKey.replace(/\\n/g, '\n');
+                    // If the key doesn't start with -----BEGIN, it might be base64 encoded
+                    if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+                        try {
+                            privateKey = Buffer.from(privateKey, 'base64').toString('utf8');
+                        }
+                        catch (error) {
+                            console.warn('Failed to decode base64 private key, using as-is');
+                        }
+                    }
+                }
+                serviceAccount = {
+                    type: "service_account",
+                    project_id: process.env.FIREBASE_PROJECT_ID,
+                    private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+                    private_key: privateKey,
+                    client_email: process.env.FIREBASE_CLIENT_EMAIL,
+                    client_id: process.env.FIREBASE_CLIENT_ID,
+                    auth_uri: process.env.FIREBASE_AUTH_URI,
+                    token_uri: process.env.FIREBASE_TOKEN_URI,
+                    auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL,
+                    client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL
+                };
+            }
+            if (!serviceAccount.project_id || !serviceAccount.private_key || !serviceAccount.client_email) {
+                console.error('❌ Missing Firebase configuration:');
+                console.error('  - Project ID:', !!serviceAccount.project_id);
+                console.error('  - Private Key:', !!serviceAccount.private_key, serviceAccount.private_key ? `(${serviceAccount.private_key.length} chars)` : '');
+                console.error('  - Client Email:', !!serviceAccount.client_email);
+                throw new Error('Missing Firebase configuration. Please check your environment variables.');
+            }
+            // Debug private key format
+            if (serviceAccount.private_key) {
+                const lines = serviceAccount.private_key.split('\n');
+                console.log('🔧 Firebase config loaded:');
+                console.log('  - Project ID:', serviceAccount.project_id);
+                console.log('  - Client Email:', serviceAccount.client_email);
+                console.log('  - Private Key: Present (' + serviceAccount.private_key.length + ' chars)');
+                console.log('  - Private Key contains newlines:', serviceAccount.private_key.includes('\n'));
+                console.log('  - Private Key line count:', lines.length);
+                console.log('  - First line: "' + lines[0] + '"');
+                console.log('  - Last line: "' + lines[lines.length - 1] + '"');
+                // Validate the private key format
+                if (!lines[0].includes('-----BEGIN PRIVATE KEY-----')) {
+                    console.error('❌ Private key does not start with BEGIN marker!');
+                    console.error('  - Actual first line:', JSON.stringify(lines[0]));
+                }
+                if (!lines[lines.length - 1].includes('-----END PRIVATE KEY-----')) {
+                    console.error('❌ Private key does not end with END marker!');
+                    console.error('  - Actual last line:', JSON.stringify(lines[lines.length - 1]));
+                }
+                // Additional validation - check for common issues
+                const keyContent = lines.slice(1, -1).join('');
+                console.log('  - Key content length (without headers):', keyContent.length);
+                console.log('  - Key content sample:', keyContent.substring(0, 50) + '...');
+                // Check if the key content is valid base64
+                try {
+                    Buffer.from(keyContent, 'base64');
+                    console.log('  - Key content is valid base64: ✅');
+                }
+                catch (error) {
+                    console.error('  - Key content is NOT valid base64: ❌', error.message);
+                }
+                // Debug the complete service account object
+                console.log('🔍 Complete service account object:');
+                console.log('  - type:', serviceAccount.type);
+                console.log('  - project_id:', serviceAccount.project_id);
+                console.log('  - private_key_id:', serviceAccount.private_key_id);
+                console.log('  - client_email:', serviceAccount.client_email);
+                console.log('  - client_id:', serviceAccount.client_id);
+                console.log('  - auth_uri:', serviceAccount.auth_uri);
+                console.log('  - token_uri:', serviceAccount.token_uri);
+            }
+            else {
+                console.error('❌ Private key is missing!');
+            }
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount),
+                projectId: process.env.FIREBASE_PROJECT_ID
+            });
+        }
+        // Initialize Firestore
+        db = getFirestore();
+        // Test the connection by trying to read from a collection
+        await db.collection('_health_check').limit(1).get();
+        console.log('✅ Firebase Firestore connection established successfully');
+    }
+    catch (error) {
+        console.error('❌ Failed to initialize Firebase database:', error);
+        throw error;
+    }
+};
+export const getFirestoreClient = () => {
+    if (!db) {
+        throw new Error('Database not initialized. Call initializeDatabase() first.');
+    }
+    return db;
+};
+// Export db instance for direct access
+export { db };
+// Firebase Auth integration
+export const getFirebaseAuth = () => {
+    return admin.auth();
+};
+// Helper function to create collections with initial setup
+export const initializeCollections = async () => {
+    const firestore = getFirestoreClient();
+    try {
+        // Create initial collections with sample documents to establish structure
+        const collections = [
+            'organizations',
+            'users',
+            'social_accounts',
+            'posts',
+            'analytics'
+        ];
+        for (const collectionName of collections) {
+            const collectionRef = firestore.collection(collectionName);
+            const snapshot = await collectionRef.limit(1).get();
+            if (snapshot.empty) {
+                // Create a placeholder document to establish the collection
+                await collectionRef.doc('_placeholder').set({
+                    _placeholder: true,
+                    created_at: admin.firestore.FieldValue.serverTimestamp()
+                });
+                console.log(`✅ Initialized collection: ${collectionName}`);
+            }
+        }
+        console.log('✅ All collections initialized successfully');
+    }
+    catch (error) {
+        console.error('❌ Failed to initialize collections:', error);
+        throw error;
+    }
+};
+// Database health check
+export const checkDatabaseHealth = async () => {
+    try {
+        const firestore = getFirestoreClient();
+        await firestore.collection('_health_check').limit(1).get();
+        return true;
+    }
+    catch (error) {
+        console.error('Database health check failed:', error);
+        return false;
+    }
+};
+// Helper function to generate Firestore document ID
+export const generateId = () => {
+    return getFirestoreClient().collection('_').doc().id;
+};
+// Helper function to get server timestamp
+export const getServerTimestamp = () => {
+    return admin.firestore.FieldValue.serverTimestamp();
+};
+// Helper function to convert Firestore timestamp to ISO string
+export const timestampToISOString = (timestamp) => {
+    if (timestamp && timestamp.toDate) {
+        return timestamp.toDate().toISOString();
+    }
+    return new Date().toISOString();
+};
+export default {
+    initializeDatabase,
+    getFirestoreClient,
+    getFirebaseAuth,
+    initializeCollections,
+    checkDatabaseHealth,
+    generateId,
+    getServerTimestamp,
+    timestampToISOString
+};
+//# sourceMappingURL=database.js.map
