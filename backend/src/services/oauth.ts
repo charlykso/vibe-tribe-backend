@@ -218,7 +218,7 @@ export class LinkedInOAuthService {
       client_id: this.config.clientId,
       redirect_uri: this.config.redirectUri,
       state,
-      scope: 'r_liteprofile r_emailaddress'
+      scope: 'r_liteprofile'
     });
 
     return `https://www.linkedin.com/oauth/v2/authorization?${params.toString()}`;
