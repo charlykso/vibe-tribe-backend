@@ -26,7 +26,8 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "deploy:netlify": "npm run build && npx netlify-cli deploy --prod --dir=dist"
   },
   "dependencies": {
     "@fullcalendar/daygrid": "^6.1.17",

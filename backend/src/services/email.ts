@@ -37,8 +37,20 @@ export class EmailService {
   private transporter?: nodemailer.Transporter;
 
   constructor() {
+    // Auto-detect provider based on available configuration
+    const hasValidSendGrid = process.env.SENDGRID_API_KEY && process.env.SENDGRID_API_KEY.startsWith('SG.');
+    const hasValidSMTP = process.env.SMTP_USER && process.env.SMTP_PASS;
+
+    // Prefer SendGrid if available, otherwise use SMTP if configured
+    let provider: 'sendgrid' | 'nodemailer' = 'sendgrid'; // Default to sendgrid
+    if (hasValidSendGrid) {
+      provider = 'sendgrid';
+    } else if (hasValidSMTP) {
+      provider = 'nodemailer';
+    }
+
     this.config = {
-      provider: process.env.EMAIL_PROVIDER as 'sendgrid' | 'nodemailer' || 'sendgrid',
+      provider: provider,
       sendgridApiKey: process.env.SENDGRID_API_KEY,
       fromEmail: process.env.FROM_EMAIL || 'noreply@vibetribe.com',
       fromName: process.env.FROM_NAME || 'VibeTribe',
@@ -57,14 +69,20 @@ export class EmailService {
   }
 
   private initialize() {
+    console.log(`🔧 Initializing email service with provider: ${this.config.provider}`);
+    console.log(`🔧 SendGrid API Key: ${this.config.sendgridApiKey ? 'Present' : 'Missing'}`);
+
     if (this.config.provider === 'sendgrid' && this.config.sendgridApiKey) {
       sgMail.setApiKey(this.config.sendgridApiKey);
-      console.log('✅ SendGrid email service initialized');
-    } else if (this.config.provider === 'nodemailer') {
-      this.transporter = nodemailer.createTransporter(this.config.smtpConfig!);
-      console.log('✅ Nodemailer email service initialized');
+      console.log(`✅ SendGrid email service initialized (from: ${this.config.fromEmail})`);
+    } else if (this.config.provider === 'nodemailer' && this.config.smtpConfig?.auth?.user) {
+      this.transporter = nodemailer.createTransport(this.config.smtpConfig!);
+      console.log(`✅ Nodemailer email service initialized (from: ${this.config.fromEmail})`);
     } else {
-      console.warn('⚠️ Email service not configured properly');
+      console.warn('⚠️ Email service not configured properly - emails will be logged to console');
+      console.warn(`   Provider: ${this.config.provider}`);
+      console.warn(`   SendGrid API Key: ${this.config.sendgridApiKey ? 'Present' : 'Missing'}`);
+      console.warn(`   SMTP User: ${this.config.smtpConfig?.auth?.user ? 'Present' : 'Missing'}`);
     }
   }
 
@@ -129,10 +147,14 @@ export class EmailService {
 
   // Email verification
   async sendVerificationEmail(email: string, verificationToken: string, userName: string): Promise<{ success: boolean; error?: string }> {
-    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${verificationToken}`;
-    
+    // Use production URL if available, otherwise fallback to localhost
+    const frontendUrl = process.env.FRONTEND_URL ||
+                       process.env.CORS_ORIGIN?.split(',')[0] ||
+                       'https://vibe-tribe-manager.netlify.app';
+    const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
+
     const template = this.getVerificationEmailTemplate(userName, verificationUrl);
-    
+
     const result = await this.sendEmail({
       to: email,
       subject: template.subject,
@@ -145,10 +167,14 @@ export class EmailService {
 
   // Password reset email
   async sendPasswordResetEmail(email: string, resetToken: string, userName: string): Promise<{ success: boolean; error?: string }> {
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
-    
+    // Use production URL if available, otherwise fallback to localhost
+    const frontendUrl = process.env.FRONTEND_URL ||
+                       process.env.CORS_ORIGIN?.split(',')[0] ||
+                       'https://vibe-tribe-manager.netlify.app';
+    const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
+
     const template = this.getPasswordResetEmailTemplate(userName, resetUrl);
-    
+
     const result = await this.sendEmail({
       to: email,
       subject: template.subject,
@@ -161,15 +187,19 @@ export class EmailService {
 
   // Organization invitation email
   async sendInvitationEmail(
-    email: string, 
-    inviterName: string, 
-    organizationName: string, 
+    email: string,
+    inviterName: string,
+    organizationName: string,
     invitationToken: string
   ): Promise<{ success: boolean; error?: string }> {
-    const invitationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/accept-invitation?token=${invitationToken}`;
-    
+    // Use production URL if available, otherwise fallback to localhost
+    const frontendUrl = process.env.FRONTEND_URL ||
+                       process.env.CORS_ORIGIN?.split(',')[0] ||
+                       'https://vibe-tribe-manager.netlify.app';
+    const invitationUrl = `${frontendUrl}/accept-invitation?token=${invitationToken}`;
+
     const template = this.getInvitationEmailTemplate(inviterName, organizationName, invitationUrl);
-    
+
     const result = await this.sendEmail({
       to: email,
       subject: template.subject,

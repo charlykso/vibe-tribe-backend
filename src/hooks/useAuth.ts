@@ -17,18 +17,28 @@ export const useAuth = () => {
       try {
         const token = AuthService.getTokenFromStorage();
 
-        if (token && AuthService.isTokenValid(token)) {
-          const user = await AuthService.getCurrentUser();
-          if (user) {
-            setAuthState({ user, loading: false, error: null });
-            // Connect to WebSocket with valid token
-            websocketService.connect(token);
-            return;
+        if (token) {
+          // First check if token is structurally valid
+          if (AuthService.isTokenValid(token)) {
+            try {
+              const user = await AuthService.getCurrentUser();
+              if (user) {
+                setAuthState({ user, loading: false, error: null });
+                // Connect to WebSocket with valid token
+                websocketService.connect(token);
+                return;
+              }
+            } catch (userError) {
+              console.error('Failed to get current user:', userError);
+              // Token might be expired or invalid on server side
+              AuthService.removeTokenFromStorage();
+            }
+          } else {
+            AuthService.removeTokenFromStorage();
           }
         }
 
-        // No valid token or user, clear storage
-        AuthService.removeTokenFromStorage();
+        // No valid token or user, set unauthenticated state
         setAuthState({ user: null, loading: false, error: null });
       } catch (error) {
         console.error('Auth initialization error:', error);
@@ -36,7 +46,7 @@ export const useAuth = () => {
         setAuthState({
           user: null,
           loading: false,
-          error: error instanceof Error ? error.message : 'Authentication failed'
+          error: null // Don't show error on initialization failure
         });
       }
     };

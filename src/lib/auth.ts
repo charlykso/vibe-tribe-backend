@@ -181,23 +181,27 @@ export class AuthService {
     }
 
     try {
-      // Check for our custom JWT-like format: jwt-{base64_payload}
-      if (!token.startsWith('jwt-')) {
+      // Parse JWT token (format: header.payload.signature)
+      const parts = token.split('.');
+      if (parts.length !== 3) {
         return false;
       }
 
-      // Extract and decode the payload
-      const base64Payload = token.substring(4); // Remove 'jwt-' prefix
-      const payload = JSON.parse(atob(base64Payload));
+      // Decode the payload (second part)
+      const payload = JSON.parse(atob(parts[1]));
 
       // Check if token has expiration and is not expired
-      if (payload.exp && payload.exp < Date.now()) {
-        return false;
+      if (payload.exp) {
+        const currentTime = Math.floor(Date.now() / 1000); // JWT exp is in seconds
+        if (payload.exp < currentTime) {
+          return false;
+        }
       }
 
       return true;
     } catch (error) {
       // If token can't be parsed, it's invalid
+      console.warn('Token validation failed:', error);
       return false;
     }
   }
