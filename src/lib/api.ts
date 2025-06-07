@@ -19,7 +19,8 @@ class ApiClient {
   private defaultHeaders: Record<string, string>;
 
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3004/api/v1';
+    // Use deployed backend on Render for production
+    this.baseURL = import.meta.env.VITE_API_URL || 'https://vibe-tribe-backend-8yvp.onrender.com/api/v1';
     this.defaultHeaders = {
       'Content-Type': 'application/json',
     };

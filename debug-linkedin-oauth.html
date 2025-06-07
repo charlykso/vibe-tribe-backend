@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug LinkedIn OAuth - VibeTribe</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .debug-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .test-button {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 10px;
+            background-color: #0077B5;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+        }
+        .test-button:hover {
+            background-color: #005885;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 LinkedIn OAuth Debug Tool</h1>
+        <p>This tool helps debug LinkedIn OAuth redirect URI issues.</p>
+        
+        <div class="debug-info" id="config-info">
+Loading configuration...
+        </div>
+
+        <button class="test-button" onclick="testLinkedInOAuth()">
+            🧪 Test LinkedIn OAuth URL
+        </button>
+        
+        <button class="test-button" onclick="testBackendOAuth()">
+            🔗 Test Backend OAuth Initiation
+        </button>
+
+        <div id="status" class="status" style="display: none;"></div>
+
+        <div style="margin-top: 30px;">
+            <h3>🛠️ Common LinkedIn OAuth Issues:</h3>
+            <ul>
+                <li><strong>Redirect URI Mismatch</strong>: The redirect URI in LinkedIn app settings must exactly match the one sent in the OAuth request</li>
+                <li><strong>App Not Approved</strong>: LinkedIn app might need approval for certain scopes</li>
+                <li><strong>Invalid Client ID</strong>: Check if the client ID is correct in LinkedIn developer console</li>
+                <li><strong>Scope Issues</strong>: Some LinkedIn scopes require app review</li>
+            </ul>
+            
+            <h3>✅ Required LinkedIn App Settings:</h3>
+            <ul>
+                <li><strong>Authorized redirect URLs</strong>: https://vibe-tribe-manager.netlify.app/oauth/callback</li>
+                <li><strong>Client ID</strong>: 78rq93twzmd1b9</li>
+                <li><strong>App Status</strong>: Should be "In Development" or "Live"</li>
+                <li><strong>Required Scopes</strong>: r_liteprofile, r_emailaddress, w_member_social</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'https://vibe-tribe-backend-8yvp.onrender.com';
+        const CLIENT_ID = '78rq93twzmd1b9';
+        const REDIRECT_URI = 'https://vibe-tribe-manager.netlify.app/oauth/callback';
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.innerHTML = message;
+            statusDiv.style.display = 'block';
+        }
+
+        function updateConfigInfo() {
+            const configInfo = document.getElementById('config-info');
+            configInfo.textContent = `LinkedIn OAuth Configuration:
+
+Client ID: ${CLIENT_ID}
+Redirect URI: ${REDIRECT_URI}
+Backend URL: ${BACKEND_URL}
+
+Expected LinkedIn App Settings:
+- Authorized redirect URLs: ${REDIRECT_URI}
+- Client ID: ${CLIENT_ID}
+- Scopes: r_liteprofile, r_emailaddress, w_member_social
+
+Current URL Parameters (if returning from OAuth):
+${window.location.search || 'None - not returning from OAuth'}`;
+        }
+
+        function testLinkedInOAuth() {
+            showStatus('🔄 Generating LinkedIn OAuth URL...', 'info');
+            
+            const state = 'test_state_' + Math.random().toString(36).substr(2, 9);
+            const scope = encodeURIComponent('r_liteprofile r_emailaddress w_member_social');
+            const redirectUri = encodeURIComponent(REDIRECT_URI);
+            
+            const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?` +
+                `response_type=code&` +
+                `client_id=${CLIENT_ID}&` +
+                `redirect_uri=${redirectUri}&` +
+                `state=${state}&` +
+                `scope=${scope}`;
+            
+            showStatus(`✅ LinkedIn OAuth URL generated successfully!<br><br>
+                <strong>URL:</strong> ${linkedinAuthUrl}<br><br>
+                <strong>Redirect URI being sent:</strong> ${REDIRECT_URI}<br><br>
+                <strong>Note:</strong> This redirect URI must be exactly configured in your LinkedIn app settings.`, 'success');
+            
+            console.log('LinkedIn OAuth URL:', linkedinAuthUrl);
+            
+            if (confirm('Do you want to test this OAuth URL? You will be redirected to LinkedIn.')) {
+                window.location.href = linkedinAuthUrl;
+            }
+        }
+
+        async function testBackendOAuth() {
+            showStatus('🔄 Testing backend OAuth initiation...', 'info');
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/v1/oauth/initiate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer mock_token_for_testing'
+                    },
+                    body: JSON.stringify({
+                        platform: 'linkedin'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.authUrl) {
+                    showStatus(`✅ Backend OAuth initiation successful!<br><br>
+                        <strong>Generated URL:</strong> ${data.authUrl}<br><br>
+                        <strong>State:</strong> ${data.state}<br><br>
+                        <strong>Platform:</strong> ${data.platform}`, 'success');
+                    
+                    if (confirm('Backend generated OAuth URL successfully! Do you want to test it?')) {
+                        window.location.href = data.authUrl;
+                    }
+                } else {
+                    throw new Error(`Backend error: ${data.error || data.message || 'Unknown error'}`);
+                }
+            } catch (error) {
+                showStatus(`❌ Backend OAuth test failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Check if we're returning from OAuth
+        window.onload = function() {
+            updateConfigInfo();
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+            const error = urlParams.get('error');
+            const errorDescription = urlParams.get('error_description');
+            
+            if (error) {
+                showStatus(`❌ OAuth Error: ${error}<br>Description: ${errorDescription || 'No description provided'}`, 'error');
+            } else if (code && state) {
+                showStatus(`✅ OAuth Success! Received authorization code.<br><br>
+                    <strong>Code:</strong> ${code.substring(0, 20)}...<br>
+                    <strong>State:</strong> ${state}<br><br>
+                    This means the redirect URI is working correctly!`, 'success');
+            }
+        };
+    </script>
+</body>
+</html>
