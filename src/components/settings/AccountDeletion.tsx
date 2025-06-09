@@ -64,7 +64,7 @@ export const AccountDeletion = () => {
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = url;
-      a.download = `vibetribe-data-export-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `socialtribe-data-export-${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -284,8 +284,8 @@ export const AccountDeletion = () => {
         <div className="text-sm text-gray-500 dark:text-gray-400">
           <p>
             Need help? Contact our support team at{' '}
-            <a href="mailto:support@vibetribe.com" className="text-blue-600 hover:underline">
-              support@vibetribe.com
+            <a href="mailto:support@socialtribe.com" className="text-blue-600 hover:underline">
+              support@socialtribe.com
             </a>
           </p>
         </div>

@@ -394,7 +394,7 @@ router.get('/export-data', asyncHandler(async (req: AuthenticatedRequest, res) =
   };
 
   res.setHeader('Content-Type', 'application/json');
-  res.setHeader('Content-Disposition', `attachment; filename="vibetribe-data-export-${new Date().toISOString().split('T')[0]}.json"`);
+  res.setHeader('Content-Disposition', `attachment; filename="socialtribe-data-export-${new Date().toISOString().split('T')[0]}.json"`);
   res.json(exportData);
 }));
 

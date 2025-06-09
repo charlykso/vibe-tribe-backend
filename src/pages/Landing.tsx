@@ -87,7 +87,7 @@ export const Landing = () => {
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg"></div>
-              <span className="text-xl font-bold text-white">VibeTribe</span>
+              <span className="text-xl font-bold text-white">SocialTribe</span>
             </div>
             <div className="hidden md:flex items-center space-x-8">
               <a href="#features" className="text-white/80 hover:text-white transition-colors">Features</a>
@@ -144,7 +144,7 @@ export const Landing = () => {
                     <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
                     <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                   </div>
-                  <div className="text-white/60 text-sm">VibeTribe Dashboard</div>
+                  <div className="text-white/60 text-sm">SocialTribe Dashboard</div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="bg-purple-500/20 rounded-lg p-4">
@@ -217,7 +217,7 @@ export const Landing = () => {
               Loved by
               <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent"> Thousands</span>
             </h2>
-            <p className="text-xl text-white/80">See what our customers are saying about VibeTribe</p>
+            <p className="text-xl text-white/80">See what our customers are saying about SocialTribe</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -249,7 +249,7 @@ export const Landing = () => {
             <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent"> Communities?</span>
           </h2>
           <p className="text-xl text-white/80 mb-12 max-w-2xl mx-auto">
-            Join thousands of community managers who are already using VibeTribe to scale their social presence.
+            Join thousands of community managers who are already using SocialTribe to scale their social presence.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/register">
@@ -272,7 +272,7 @@ export const Landing = () => {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center space-x-2 mb-4 md:mb-0">
               <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg"></div>
-              <span className="text-xl font-bold text-white">VibeTribe</span>
+              <span className="text-xl font-bold text-white">SocialTribe</span>
             </div>
             <div className="flex space-x-8 text-white/60">
               <a href="/privacy-policy" className="hover:text-white transition-colors">Privacy</a>
@@ -282,7 +282,7 @@ export const Landing = () => {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-white/20 text-center text-white/60">
-            <p>&copy; 2024 VibeTribe. All rights reserved.</p>
+            <p>&copy; 2024 SocialTribe. All rights reserved.</p>
           </div>
         </div>
       </footer>

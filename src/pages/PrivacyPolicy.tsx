@@ -36,12 +36,12 @@ export const PrivacyPolicy = () => {
           </CardHeader>
           <CardContent className="text-gray-700 dark:text-gray-300">
             <p className="mb-4">
-              Welcome to VibeTribe ("we," "our," or "us"). We are committed to protecting your privacy and ensuring 
-              the security of your personal information. This Privacy Policy explains how we collect, use, disclose, 
+              Welcome to SocialTribe ("we," "our," or "us"). We are committed to protecting your privacy and ensuring
+              the security of your personal information. This Privacy Policy explains how we collect, use, disclose,
               and safeguard your information when you use our social media management platform.
             </p>
             <p>
-              By using VibeTribe, you agree to the collection and use of information in accordance with this policy.
+              By using SocialTribe, you agree to the collection and use of information in accordance with this policy.
             </p>
           </CardContent>
         </Card>
@@ -171,7 +171,7 @@ export const PrivacyPolicy = () => {
               <li><strong>Restriction:</strong> Limit how we process your information</li>
             </ul>
             <p className="mt-4">
-              To exercise these rights, please contact us at privacy@vibetribe.com or use the account 
+              To exercise these rights, please contact us at privacy@socialtribe.com or use the account
               deletion feature in your settings.
             </p>
           </CardContent>
@@ -190,16 +190,16 @@ export const PrivacyPolicy = () => {
               If you have any questions about this Privacy Policy or our data practices, please contact us:
             </p>
             <div className="space-y-2">
-              <p><strong>Email:</strong> privacy@vibetribe.com</p>
-              <p><strong>Support:</strong> support@vibetribe.com</p>
-              <p><strong>Address:</strong> VibeTribe Inc., 123 Privacy Street, Data City, DC 12345</p>
+              <p><strong>Email:</strong> privacy@socialtribe.com</p>
+              <p><strong>Support:</strong> support@socialtribe.com</p>
+              <p><strong>Address:</strong> SocialTribe Inc., 123 Privacy Street, Data City, DC 12345</p>
             </div>
           </CardContent>
         </Card>
 
         {/* Footer */}
         <div className="text-center text-gray-500 dark:text-gray-400 text-sm">
-          <p>© 2024 VibeTribe. All rights reserved.</p>
+          <p>© 2024 SocialTribe. All rights reserved.</p>
         </div>
       </div>
     </div>

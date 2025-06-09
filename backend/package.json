@@ -1,7 +1,7 @@
 {
-  "name": "vibe-tribe-backend",
+  "name": "socialtribe-backend",
   "version": "1.0.0",
-  "description": "VibeTribe Backend API Server",
+  "description": "SocialTribe Backend API Server",
   "type": "module",
   "main": "dist/server.js",
   "scripts": {
@@ -26,7 +26,7 @@
     "firebase",
     "nodejs"
   ],
-  "author": "VibeTribe Team",
+  "author": "SocialTribe Team",
   "license": "MIT",
   "dependencies": {
     "@sendgrid/mail": "^8.1.5",
