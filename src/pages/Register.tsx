@@ -73,11 +73,11 @@ export const Register: React.FC = () => {
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
             <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg"></div>
-            <span className="ml-2 text-2xl font-bold">VibeTribe</span>
+            <span className="ml-2 text-2xl font-bold">SocialTribe</span>
           </div>
           <CardTitle className="text-2xl text-center">Create your account</CardTitle>
           <CardDescription className="text-center">
-            Join VibeTribe and start managing your communities
+            Join SocialTribe and start managing your communities
           </CardDescription>
         </CardHeader>
 

@@ -1,4 +1,4 @@
-// Real auth service - connects to VibeTribe backend API
+// Real auth service - connects to SocialTribe backend API
 
 
 export interface User {

@@ -102,7 +102,7 @@ export const DemoOAuth = () => {
             Connect to {platformInfo.name}
           </CardTitle>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            VibeTribe would like to connect to your {platformInfo.name} account
+            SocialTribe would like to connect to your {platformInfo.name} account
           </p>
         </CardHeader>
         

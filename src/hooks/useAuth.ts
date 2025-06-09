@@ -97,7 +97,7 @@ export const useAuth = () => {
       websocketService.connect(token);
 
       toast({
-        title: "Welcome to VibeTribe!",
+        title: "Welcome to SocialTribe!",
         description: "Your account has been created successfully.",
       });
 
