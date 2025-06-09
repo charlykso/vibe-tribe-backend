@@ -301,6 +301,45 @@ export class LinkedInOAuthService {
       };
     }
   }
+
+  // Exchange authorization code for access token
+  async exchangeCodeForToken(code: string): Promise<any> {
+    const tokenResponse = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: this.config.redirectUri,
+        client_id: this.config.clientId,
+        client_secret: this.config.clientSecret,
+      }),
+    });
+
+    if (!tokenResponse.ok) {
+      throw new Error('Failed to exchange code for access token');
+    }
+
+    return await tokenResponse.json();
+  }
+
+  // Get user profile from LinkedIn
+  async getUserProfile(accessToken: string): Promise<any> {
+    const profileResponse = await fetch('https://api.linkedin.com/v2/people/~:(id,localizedFirstName,localizedLastName,profilePicture(displayImage~:playableStreams))', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'X-Restli-Protocol-Version': '2.0.0'
+      },
+    });
+
+    if (!profileResponse.ok) {
+      throw new Error('Failed to get user profile from LinkedIn');
+    }
+
+    return await profileResponse.json();
+  }
 }
 
 // Facebook OAuth Service
@@ -544,5 +583,21 @@ export class OAuthServiceFactory {
       default:
         throw new Error(`Unsupported platform: ${platform}`);
     }
+  }
+
+  static getLinkedInService() {
+    return new LinkedInOAuthService();
+  }
+
+  static getTwitterService() {
+    return new TwitterOAuthService();
+  }
+
+  static getFacebookService() {
+    return new FacebookOAuthService();
+  }
+
+  static getInstagramService() {
+    return new InstagramOAuthService();
   }
 }

@@ -306,4 +306,63 @@ router.delete('/disconnect/:accountId', asyncHandler(async (req: AuthenticatedRe
   });
 }));
 
+// GET /api/v1/oauth/linkedin/callback
+// LinkedIn OAuth callback endpoint (no auth required - called by LinkedIn)
+router.get('/linkedin/callback', asyncHandler(async (req, res) => {
+  const { code, state, error } = req.query;
+
+  if (error) {
+    console.error('LinkedIn OAuth error:', error);
+    return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=oauth_failed`);
+  }
+
+  if (!code || !state) {
+    console.error('Missing code or state in LinkedIn callback');
+    return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=missing_params`);
+  }
+
+  try {
+    const linkedinService = OAuthServiceFactory.getLinkedInService();
+
+    // Exchange code for access token
+    const tokenData = await linkedinService.exchangeCodeForToken(code as string);
+
+    // Get user profile
+    const profile = await linkedinService.getUserProfile(tokenData.access_token);
+
+    // Store the social account
+    const firestore = getFirestoreClient();
+
+    // Parse state to get user info
+    const stateData = JSON.parse(Buffer.from(state as string, 'base64').toString());
+    const { userId, organizationId } = stateData;
+
+    const socialAccount: Omit<SocialAccount, 'id'> = {
+      platform: 'linkedin',
+      platform_user_id: profile.id,
+      username: profile.localizedFirstName + ' ' + profile.localizedLastName,
+      display_name: profile.localizedFirstName + ' ' + profile.localizedLastName,
+      profile_image_url: profile.profilePicture?.displayImage || '',
+      access_token: tokenData.access_token,
+      refresh_token: tokenData.refresh_token || '',
+      token_expires_at: tokenData.expires_in ?
+        new Date(Date.now() + tokenData.expires_in * 1000) : null,
+      user_id: userId,
+      organization_id: organizationId,
+      is_active: true,
+      created_at: getServerTimestamp(),
+      updated_at: getServerTimestamp()
+    };
+
+    await firestore.collection('social_accounts').add(socialAccount);
+
+    // Redirect back to frontend with success
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?success=linkedin_connected`);
+
+  } catch (error) {
+    console.error('LinkedIn OAuth callback error:', error);
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=oauth_failed`);
+  }
+}));
+
 export default router;
