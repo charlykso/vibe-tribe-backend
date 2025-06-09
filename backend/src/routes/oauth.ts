@@ -337,7 +337,7 @@ router.get('/linkedin/callback', asyncHandler(async (req, res) => {
     const stateData = JSON.parse(Buffer.from(state as string, 'base64').toString());
     const { userId, organizationId } = stateData;
 
-    const socialAccount: Omit<SocialAccount, 'id'> = {
+    const socialAccount: any = {
       platform: 'linkedin',
       platform_user_id: profile.id,
       username: profile.localizedFirstName + ' ' + profile.localizedLastName,
