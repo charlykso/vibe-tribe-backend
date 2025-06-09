@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkedIn OAuth Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        .url-display {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 LinkedIn OAuth Debug Test</h1>
+        <p>This tool will test your LinkedIn OAuth configuration and show you exactly what URLs are being generated.</p>
+        
+        <div id="status"></div>
+        
+        <button onclick="testBackendOAuth()">🔧 Test Backend OAuth URL Generation</button>
+        <button onclick="testDirectLinkedIn()">🔗 Test Direct LinkedIn URL</button>
+        <button onclick="clearStatus()">🧹 Clear</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'https://vibe-tribe-backend-8yvp.onrender.com';
+        const CLIENT_ID = '78rq93twzmd1b9';
+        const REDIRECT_URI = 'https://vibe-tribe-backend-8yvp.onrender.com/api/v1/oauth/linkedin/callback';
+        
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+        
+        function addResult(title, content) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML += `
+                <h3>${title}</h3>
+                <div class="url-display">${content}</div>
+            `;
+        }
+        
+        function clearStatus() {
+            document.getElementById('status').innerHTML = '';
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        async function testBackendOAuth() {
+            showStatus('🔄 Testing backend OAuth URL generation...', 'info');
+            
+            try {
+                // Test the backend OAuth initiate endpoint
+                const response = await fetch(`${BACKEND_URL}/api/v1/oauth/initiate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer test_token'
+                    },
+                    body: JSON.stringify({
+                        platform: 'linkedin'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.authUrl) {
+                    showStatus('✅ Backend OAuth URL generated successfully!', 'success');
+                    addResult('Backend Generated OAuth URL:', data.authUrl);
+                    addResult('State Parameter:', data.state);
+                    
+                    // Parse the URL to check redirect_uri
+                    const url = new URL(data.authUrl);
+                    const redirectUri = url.searchParams.get('redirect_uri');
+                    addResult('Extracted Redirect URI:', redirectUri);
+                    
+                    if (redirectUri === REDIRECT_URI) {
+                        addResult('✅ Redirect URI Check:', 'CORRECT - Matches expected backend callback URL');
+                    } else {
+                        addResult('❌ Redirect URI Check:', `INCORRECT - Expected: ${REDIRECT_URI}, Got: ${redirectUri}`);
+                    }
+                    
+                } else {
+                    throw new Error(`Backend error: ${data.error || data.message || 'Unknown error'}`);
+                }
+                
+            } catch (error) {
+                showStatus(`❌ Backend test failed: ${error.message}`, 'error');
+                console.error('Backend OAuth test error:', error);
+            }
+        }
+        
+        function testDirectLinkedIn() {
+            showStatus('🔄 Testing direct LinkedIn URL...', 'info');
+            
+            const state = 'test_state_' + Math.random().toString(36).substr(2, 9);
+            const scope = encodeURIComponent('r_liteprofile r_emailaddress');
+            const redirectUri = encodeURIComponent(REDIRECT_URI);
+            
+            const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?` +
+                `response_type=code&` +
+                `client_id=${CLIENT_ID}&` +
+                `redirect_uri=${redirectUri}&` +
+                `state=${state}&` +
+                `scope=${scope}`;
+            
+            showStatus('✅ Direct LinkedIn URL generated!', 'success');
+            addResult('Direct LinkedIn OAuth URL:', linkedinAuthUrl);
+            addResult('Client ID:', CLIENT_ID);
+            addResult('Redirect URI:', REDIRECT_URI);
+            addResult('State:', state);
+            addResult('Scope:', 'r_liteprofile r_emailaddress');
+            
+            if (confirm('Do you want to test this direct LinkedIn URL? (This will redirect you to LinkedIn)')) {
+                window.location.href = linkedinAuthUrl;
+            }
+        }
+    </script>
+</body>
+</html>

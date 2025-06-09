@@ -311,6 +311,13 @@ router.delete('/disconnect/:accountId', asyncHandler(async (req: AuthenticatedRe
 router.get('/linkedin/callback', asyncHandler(async (req, res) => {
   const { code, state, error } = req.query;
 
+  console.log('🔗 LinkedIn OAuth callback received:', {
+    code: code ? 'present' : 'missing',
+    state: state ? state : 'missing',
+    error: error || 'none',
+    query: req.query
+  });
+
   if (error) {
     console.error('LinkedIn OAuth error:', error);
     return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=oauth_failed`);
@@ -334,8 +341,14 @@ router.get('/linkedin/callback', asyncHandler(async (req, res) => {
     const firestore = getFirestoreClient();
 
     // Parse state to get user info
-    const stateData = JSON.parse(Buffer.from(state as string, 'base64').toString());
-    const { userId, organizationId } = stateData;
+    // State format: userId_organizationId_timestamp_random
+    const stateParts = (state as string).split('_');
+    if (stateParts.length < 4) {
+      throw new Error('Invalid state format');
+    }
+
+    const userId = stateParts[0];
+    const organizationId = stateParts[1];
 
     const socialAccount: any = {
       platform: 'linkedin',
