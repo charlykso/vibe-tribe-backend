@@ -257,6 +257,12 @@ router.delete('/disconnect/:accountId', asyncHandler(async (req, res) => {
 // LinkedIn OAuth callback endpoint (no auth required - called by LinkedIn)
 router.get('/linkedin/callback', asyncHandler(async (req, res) => {
     const { code, state, error } = req.query;
+    console.log('🔗 LinkedIn OAuth callback received:', {
+        code: code ? 'present' : 'missing',
+        state: state ? state : 'missing',
+        error: error || 'none',
+        query: req.query
+    });
     if (error) {
         console.error('LinkedIn OAuth error:', error);
         return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=oauth_failed`);
