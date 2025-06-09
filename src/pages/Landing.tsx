@@ -275,7 +275,7 @@ export const Landing = () => {
               <span className="text-xl font-bold text-white">VibeTribe</span>
             </div>
             <div className="flex space-x-8 text-white/60">
-              <a href="#" className="hover:text-white transition-colors">Privacy</a>
+              <a href="/privacy-policy" className="hover:text-white transition-colors">Privacy</a>
               <a href="#" className="hover:text-white transition-colors">Terms</a>
               <a href="#" className="hover:text-white transition-colors">Support</a>
               <a href="#" className="hover:text-white transition-colors">Contact</a>

@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bell, Shield, Users, Zap, Globe, Key, Database, Mail } from 'lucide-react';
 import { TeamInvitations } from '@/components/team/TeamInvitations';
+import { AccountDeletion } from '@/components/settings/AccountDeletion';
 
 export const Settings = () => {
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -233,6 +234,9 @@ export const Settings = () => {
               <Button variant="outline">Setup Authenticator</Button>
             </CardContent>
           </Card>
+
+          {/* Account Deletion */}
+          <AccountDeletion />
         </TabsContent>
       </Tabs>
     </div>

@@ -12,6 +12,7 @@ import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { OAuthCallback } from "./pages/OAuthCallback";
+import { PrivacyPolicy } from "./pages/PrivacyPolicy";
 import { DemoOAuth } from "./pages/DemoOAuth";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import NotFound from "./pages/NotFound";
@@ -32,6 +33,7 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/oauth/callback" element={<OAuthCallback />} />
               <Route path="/oauth/demo" element={<DemoOAuth />} />
               <Route
