@@ -274,8 +274,13 @@ router.get('/linkedin/callback', asyncHandler(async (req, res) => {
         // Store the social account
         const firestore = getFirestoreClient();
         // Parse state to get user info
-        const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
-        const { userId, organizationId } = stateData;
+        // State format: userId_organizationId_timestamp_random
+        const stateParts = state.split('_');
+        if (stateParts.length < 4) {
+            throw new Error('Invalid state format');
+        }
+        const userId = stateParts[0];
+        const organizationId = stateParts[1];
         const socialAccount = {
             platform: 'linkedin',
             platform_user_id: profile.id,
