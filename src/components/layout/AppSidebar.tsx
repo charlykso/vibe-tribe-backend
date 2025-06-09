@@ -69,7 +69,7 @@ const navigationItems = [
     ]
   },
   {
-    title: "Community & Platforms",
+    title: "Community",
     icon: Users,
     isExpandable: true,
     subItems: [
