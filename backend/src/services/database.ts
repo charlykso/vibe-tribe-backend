@@ -158,12 +158,20 @@ export const initializeDatabase = async (): Promise<void> => {
           // Replace escaped newlines with actual newlines
           privateKey = privateKey.replace(/\\n/g, '\n');
 
-          // If the key doesn't start with -----BEGIN, it might be base64 encoded
-          if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+          // Only try to decode as Base64 if it doesn't look like a PEM key
+          // and doesn't contain newlines (which would indicate it's already formatted)
+          if (!privateKey.includes('-----BEGIN PRIVATE KEY-----') &&
+              !privateKey.includes('\n') &&
+              privateKey.length > 100) {
             try {
-              privateKey = Buffer.from(privateKey, 'base64').toString('utf8');
+              const decoded = Buffer.from(privateKey, 'base64').toString('utf8');
+              // Verify the decoded content looks like a PEM key
+              if (decoded.includes('-----BEGIN PRIVATE KEY-----')) {
+                privateKey = decoded;
+                console.log('✅ Successfully decoded Base64 private key');
+              }
             } catch (error) {
-              console.warn('Failed to decode base64 private key, using as-is');
+              console.warn('Private key is not Base64 encoded, using as-is');
             }
           }
         }

@@ -306,6 +306,309 @@ router.delete('/disconnect/:accountId', asyncHandler(async (req: AuthenticatedRe
   });
 }));
 
+// GET /api/v1/oauth/twitter/callback
+// Twitter OAuth callback endpoint (no auth required - called by Twitter)
+router.get('/twitter/callback', asyncHandler(async (req, res) => {
+  const { code, state, error } = req.query;
+
+  console.log('🐦 Twitter OAuth callback received:', {
+    code: code ? 'present' : 'missing',
+    state: state ? state : 'missing',
+    error: error || 'none',
+    query: req.query
+  });
+
+  if (error) {
+    console.error('Twitter OAuth error:', error);
+    return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=oauth_failed`);
+  }
+
+  if (!code || !state) {
+    console.error('Missing code or state in Twitter callback');
+    return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=missing_params`);
+  }
+
+  try {
+    // Verify state parameter
+    const stateData = oauthStates.get(state as string);
+    if (!stateData) {
+      console.error('Invalid or expired OAuth state:', state);
+      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=invalid_state`);
+    }
+
+    // Verify platform matches
+    if (stateData.platform !== 'twitter') {
+      console.error('Platform mismatch in state:', stateData.platform);
+      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=platform_mismatch`);
+    }
+
+    // Clean up the state
+    oauthStates.delete(state as string);
+
+    // Get Twitter OAuth service and handle callback
+    const twitterService = OAuthServiceFactory.getService('twitter');
+    const result = await (twitterService as any).handleCallback(code as string, stateData.codeVerifier);
+
+    if (!result.success || !result.account) {
+      console.error('Twitter OAuth failed:', result.error);
+      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=oauth_failed`);
+    }
+
+    const firestore = getFirestoreClient();
+
+    // Check if account already exists
+    const existingAccountQuery = await firestore
+      .collection('social_accounts')
+      .where('platform', '==', 'twitter')
+      .where('platform_user_id', '==', result.account.platform_user_id)
+      .where('organization_id', '==', stateData.organizationId)
+      .limit(1)
+      .get();
+
+    let accountData: SocialAccount;
+
+    if (!existingAccountQuery.empty) {
+      // Update existing account
+      const existingDoc = existingAccountQuery.docs[0];
+      const updateData = {
+        ...result.account,
+        updated_at: getServerTimestamp(),
+        last_sync_at: getServerTimestamp(),
+        is_active: true
+      };
+
+      await existingDoc.ref.update(updateData);
+      accountData = { id: existingDoc.id, ...updateData } as SocialAccount;
+      console.log('✅ Updated existing Twitter account:', existingDoc.id);
+    } else {
+      // Create new account
+      const newAccountData = {
+        ...result.account,
+        user_id: stateData.userId,
+        organization_id: stateData.organizationId,
+        created_at: getServerTimestamp(),
+        updated_at: getServerTimestamp(),
+        last_sync_at: getServerTimestamp(),
+        is_active: true
+      };
+
+      const docRef = await firestore.collection('social_accounts').add(newAccountData);
+      accountData = { id: docRef.id, ...newAccountData } as SocialAccount;
+      console.log('✅ Created new Twitter account:', docRef.id);
+    }
+
+    // Redirect to success page
+    const successUrl = `${process.env.FRONTEND_URL}/dashboard/community/platforms?success=twitter_connected&account=${accountData.username}`;
+    res.redirect(successUrl);
+
+  } catch (error) {
+    console.error('❌ Twitter OAuth callback error:', error);
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=callback_failed`);
+  }
+}));
+
+// GET /api/v1/oauth/facebook/callback
+// Facebook OAuth callback endpoint (no auth required - called by Facebook)
+router.get('/facebook/callback', asyncHandler(async (req, res) => {
+  const { code, state, error } = req.query;
+
+  console.log('📘 Facebook OAuth callback received:', {
+    code: code ? 'present' : 'missing',
+    state: state ? state : 'missing',
+    error: error || 'none',
+    query: req.query
+  });
+
+  if (error) {
+    console.error('Facebook OAuth error:', error);
+    return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=oauth_failed`);
+  }
+
+  if (!code || !state) {
+    console.error('Missing code or state in Facebook callback');
+    return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=missing_params`);
+  }
+
+  try {
+    // Verify state parameter
+    const stateData = oauthStates.get(state as string);
+    if (!stateData) {
+      console.error('Invalid or expired OAuth state:', state);
+      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=invalid_state`);
+    }
+
+    // Verify platform matches
+    if (stateData.platform !== 'facebook') {
+      console.error('Platform mismatch in state:', stateData.platform);
+      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=platform_mismatch`);
+    }
+
+    // Clean up the state
+    oauthStates.delete(state as string);
+
+    // Get Facebook OAuth service and handle callback
+    const facebookService = OAuthServiceFactory.getService('facebook');
+    const result = await (facebookService as any).handleCallback(code as string);
+
+    if (!result.success || !result.account) {
+      console.error('Facebook OAuth failed:', result.error);
+      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=oauth_failed`);
+    }
+
+    const firestore = getFirestoreClient();
+
+    // Check if account already exists
+    const existingAccountQuery = await firestore
+      .collection('social_accounts')
+      .where('platform', '==', 'facebook')
+      .where('platform_user_id', '==', result.account.platform_user_id)
+      .where('organization_id', '==', stateData.organizationId)
+      .limit(1)
+      .get();
+
+    let accountData: SocialAccount;
+
+    if (!existingAccountQuery.empty) {
+      // Update existing account
+      const existingDoc = existingAccountQuery.docs[0];
+      const updateData = {
+        ...result.account,
+        updated_at: getServerTimestamp(),
+        last_sync_at: getServerTimestamp(),
+        is_active: true
+      };
+
+      await existingDoc.ref.update(updateData);
+      accountData = { id: existingDoc.id, ...updateData } as SocialAccount;
+      console.log('✅ Updated existing Facebook account:', existingDoc.id);
+    } else {
+      // Create new account
+      const newAccountData = {
+        ...result.account,
+        user_id: stateData.userId,
+        organization_id: stateData.organizationId,
+        created_at: getServerTimestamp(),
+        updated_at: getServerTimestamp(),
+        last_sync_at: getServerTimestamp(),
+        is_active: true
+      };
+
+      const docRef = await firestore.collection('social_accounts').add(newAccountData);
+      accountData = { id: docRef.id, ...newAccountData } as SocialAccount;
+      console.log('✅ Created new Facebook account:', docRef.id);
+    }
+
+    // Redirect to success page
+    const successUrl = `${process.env.FRONTEND_URL}/dashboard/community/platforms?success=facebook_connected&account=${accountData.username}`;
+    res.redirect(successUrl);
+
+  } catch (error) {
+    console.error('❌ Facebook OAuth callback error:', error);
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=callback_failed`);
+  }
+}));
+
+// GET /api/v1/oauth/instagram/callback
+// Instagram OAuth callback endpoint (no auth required - called by Instagram)
+router.get('/instagram/callback', asyncHandler(async (req, res) => {
+  const { code, state, error } = req.query;
+
+  console.log('📷 Instagram OAuth callback received:', {
+    code: code ? 'present' : 'missing',
+    state: state ? state : 'missing',
+    error: error || 'none',
+    query: req.query
+  });
+
+  if (error) {
+    console.error('Instagram OAuth error:', error);
+    return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=oauth_failed`);
+  }
+
+  if (!code || !state) {
+    console.error('Missing code or state in Instagram callback');
+    return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=missing_params`);
+  }
+
+  try {
+    // Verify state parameter
+    const stateData = oauthStates.get(state as string);
+    if (!stateData) {
+      console.error('Invalid or expired OAuth state:', state);
+      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=invalid_state`);
+    }
+
+    // Verify platform matches
+    if (stateData.platform !== 'instagram') {
+      console.error('Platform mismatch in state:', stateData.platform);
+      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=platform_mismatch`);
+    }
+
+    // Clean up the state
+    oauthStates.delete(state as string);
+
+    // Get Instagram OAuth service and handle callback
+    const instagramService = OAuthServiceFactory.getService('instagram');
+    const result = await (instagramService as any).handleCallback(code as string);
+
+    if (!result.success || !result.account) {
+      console.error('Instagram OAuth failed:', result.error);
+      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=oauth_failed`);
+    }
+
+    const firestore = getFirestoreClient();
+
+    // Check if account already exists
+    const existingAccountQuery = await firestore
+      .collection('social_accounts')
+      .where('platform', '==', 'instagram')
+      .where('platform_user_id', '==', result.account.platform_user_id)
+      .where('organization_id', '==', stateData.organizationId)
+      .limit(1)
+      .get();
+
+    let accountData: SocialAccount;
+
+    if (!existingAccountQuery.empty) {
+      // Update existing account
+      const existingDoc = existingAccountQuery.docs[0];
+      const updateData = {
+        ...result.account,
+        updated_at: getServerTimestamp(),
+        last_sync_at: getServerTimestamp(),
+        is_active: true
+      };
+
+      await existingDoc.ref.update(updateData);
+      accountData = { id: existingDoc.id, ...updateData } as SocialAccount;
+      console.log('✅ Updated existing Instagram account:', existingDoc.id);
+    } else {
+      // Create new account
+      const newAccountData = {
+        ...result.account,
+        user_id: stateData.userId,
+        organization_id: stateData.organizationId,
+        created_at: getServerTimestamp(),
+        updated_at: getServerTimestamp(),
+        last_sync_at: getServerTimestamp(),
+        is_active: true
+      };
+
+      const docRef = await firestore.collection('social_accounts').add(newAccountData);
+      accountData = { id: docRef.id, ...newAccountData } as SocialAccount;
+      console.log('✅ Created new Instagram account:', docRef.id);
+    }
+
+    // Redirect to success page
+    const successUrl = `${process.env.FRONTEND_URL}/dashboard/community/platforms?success=instagram_connected&account=${accountData.username}`;
+    res.redirect(successUrl);
+
+  } catch (error) {
+    console.error('❌ Instagram OAuth callback error:', error);
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=callback_failed`);
+  }
+}));
+
 // GET /api/v1/oauth/linkedin/callback
 // LinkedIn OAuth callback endpoint (no auth required - called by LinkedIn)
 router.get('/linkedin/callback', asyncHandler(async (req, res) => {
@@ -329,52 +632,81 @@ router.get('/linkedin/callback', asyncHandler(async (req, res) => {
   }
 
   try {
-    const linkedinService = OAuthServiceFactory.getLinkedInService();
-
-    // Exchange code for access token
-    const tokenData = await linkedinService.exchangeCodeForToken(code as string);
-
-    // Get user profile
-    const profile = await linkedinService.getUserProfile(tokenData.access_token);
-
-    // Store the social account
-    const firestore = getFirestoreClient();
-
-    // Parse state to get user info
-    // State format: userId_organizationId_timestamp_random
-    const stateParts = (state as string).split('_');
-    if (stateParts.length < 4) {
-      throw new Error('Invalid state format');
+    // Verify state parameter
+    const stateData = oauthStates.get(state as string);
+    if (!stateData) {
+      console.error('Invalid or expired OAuth state:', state);
+      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=invalid_state`);
     }
 
-    const userId = stateParts[0];
-    const organizationId = stateParts[1];
+    // Verify platform matches
+    if (stateData.platform !== 'linkedin') {
+      console.error('Platform mismatch in state:', stateData.platform);
+      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=platform_mismatch`);
+    }
 
-    const socialAccount: any = {
-      platform: 'linkedin',
-      platform_user_id: profile.id,
-      username: profile.localizedFirstName + ' ' + profile.localizedLastName,
-      display_name: profile.localizedFirstName + ' ' + profile.localizedLastName,
-      profile_image_url: profile.profilePicture?.displayImage || '',
-      access_token: tokenData.access_token,
-      refresh_token: tokenData.refresh_token || '',
-      token_expires_at: tokenData.expires_in ?
-        new Date(Date.now() + tokenData.expires_in * 1000) : null,
-      user_id: userId,
-      organization_id: organizationId,
-      is_active: true,
-      created_at: getServerTimestamp(),
-      updated_at: getServerTimestamp()
-    };
+    // Clean up the state
+    oauthStates.delete(state as string);
 
-    await firestore.collection('social_accounts').add(socialAccount);
+    // Get LinkedIn OAuth service and handle callback
+    const linkedinService = OAuthServiceFactory.getService('linkedin');
+    const result = await (linkedinService as any).handleCallback(code as string);
 
-    // Redirect back to frontend with success
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?success=linkedin_connected`);
+    if (!result.success || !result.account) {
+      console.error('LinkedIn OAuth failed:', result.error);
+      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=oauth_failed`);
+    }
+
+    const firestore = getFirestoreClient();
+
+    // Check if account already exists
+    const existingAccountQuery = await firestore
+      .collection('social_accounts')
+      .where('platform', '==', 'linkedin')
+      .where('platform_user_id', '==', result.account.platform_user_id)
+      .where('organization_id', '==', stateData.organizationId)
+      .limit(1)
+      .get();
+
+    let accountData: SocialAccount;
+
+    if (!existingAccountQuery.empty) {
+      // Update existing account
+      const existingDoc = existingAccountQuery.docs[0];
+      const updateData = {
+        ...result.account,
+        updated_at: getServerTimestamp(),
+        last_sync_at: getServerTimestamp(),
+        is_active: true
+      };
+
+      await existingDoc.ref.update(updateData);
+      accountData = { id: existingDoc.id, ...updateData } as SocialAccount;
+      console.log('✅ Updated existing LinkedIn account:', existingDoc.id);
+    } else {
+      // Create new account
+      const newAccountData = {
+        ...result.account,
+        user_id: stateData.userId,
+        organization_id: stateData.organizationId,
+        created_at: getServerTimestamp(),
+        updated_at: getServerTimestamp(),
+        last_sync_at: getServerTimestamp(),
+        is_active: true
+      };
+
+      const docRef = await firestore.collection('social_accounts').add(newAccountData);
+      accountData = { id: docRef.id, ...newAccountData } as SocialAccount;
+      console.log('✅ Created new LinkedIn account:', docRef.id);
+    }
+
+    // Redirect to success page
+    const successUrl = `${process.env.FRONTEND_URL}/dashboard/community/platforms?success=linkedin_connected&account=${accountData.username}`;
+    res.redirect(successUrl);
 
   } catch (error) {
-    console.error('LinkedIn OAuth callback error:', error);
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=oauth_failed`);
+    console.error('❌ LinkedIn OAuth callback error:', error);
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=callback_failed`);
   }
 }));
 
