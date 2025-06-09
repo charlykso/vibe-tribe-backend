@@ -75,7 +75,7 @@ const navigationItems = [
     subItems: [
       { title: "Community", url: "/dashboard/community/overview", icon: Users },
       { title: "Platforms", url: "/dashboard/community/platforms", icon: Globe },
-      { title: "Community Health", url: "/dashboard/community/health", icon: Heart },
+      { title: "Health", url: "/dashboard/community/health", icon: Heart },
       { title: "Members", url: "/dashboard/community/members", icon: UserCheck },
       { title: "Moderation", url: "/dashboard/community/moderation", icon: Shield },
       { title: "Engagement", url: "/dashboard/community/engagement", icon: TrendingUp }
