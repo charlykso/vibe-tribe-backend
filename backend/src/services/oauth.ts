@@ -17,21 +17,8 @@ interface OAuthResult {
 
 // Load OAuth credentials from Base64 or individual environment variables
 function loadOAuthCredentials() {
-  // Try Base64 encoded credentials first
-  const oauthBase64 = process.env.OAUTH_CREDENTIALS_BASE64;
-  if (oauthBase64) {
-    try {
-      const credentialsJson = Buffer.from(oauthBase64, 'base64').toString('utf8');
-      const credentials = JSON.parse(credentialsJson);
-      console.log('✅ Using Base64 encoded OAuth credentials');
-      return credentials;
-    } catch (error) {
-      console.warn('Failed to parse Base64 OAuth credentials, falling back to individual variables');
-    }
-  }
-
-  // Fallback to individual environment variables
-  return {
+  // First, try individual environment variables
+  const individualCredentials = {
     TWITTER_CLIENT_ID: process.env.TWITTER_CLIENT_ID || '',
     TWITTER_CLIENT_SECRET: process.env.TWITTER_CLIENT_SECRET || '',
     TWITTER_REDIRECT_URI: process.env.TWITTER_REDIRECT_URI || '',
@@ -45,6 +32,52 @@ function loadOAuthCredentials() {
     INSTAGRAM_CLIENT_SECRET: process.env.INSTAGRAM_CLIENT_SECRET || '',
     INSTAGRAM_REDIRECT_URI: process.env.INSTAGRAM_REDIRECT_URI || ''
   };
+
+  // Check if all required individual credentials are available
+  const requiredKeys = [
+    'TWITTER_CLIENT_ID', 'TWITTER_CLIENT_SECRET', 'TWITTER_REDIRECT_URI',
+    'LINKEDIN_CLIENT_ID', 'LINKEDIN_CLIENT_SECRET', 'LINKEDIN_REDIRECT_URI',
+    'FACEBOOK_APP_ID', 'FACEBOOK_APP_SECRET', 'FACEBOOK_REDIRECT_URI',
+    'INSTAGRAM_CLIENT_ID', 'INSTAGRAM_CLIENT_SECRET', 'INSTAGRAM_REDIRECT_URI'
+  ];
+
+  const missingKeys = requiredKeys.filter(key => !individualCredentials[key]);
+
+  // If individual credentials are complete, use them
+  if (missingKeys.length === 0) {
+    console.log('✅ Using individual OAuth environment variables');
+    return individualCredentials;
+  }
+
+  // If some individual credentials are missing, try Base64 encoded credentials
+  console.log(`⚠️ Missing individual OAuth credentials: ${missingKeys.join(', ')}`);
+  console.log('🔄 Attempting to load Base64 encoded OAuth credentials...');
+
+  const oauthBase64 = process.env.OAUTH_CREDENTIALS_BASE64;
+  if (oauthBase64) {
+    try {
+      const credentialsJson = Buffer.from(oauthBase64, 'base64').toString('utf8');
+      const base64Credentials = JSON.parse(credentialsJson);
+      console.log('✅ Using Base64 encoded OAuth credentials');
+
+      // Merge Base64 credentials with any available individual credentials
+      // Individual credentials take precedence over Base64 ones
+      const mergedCredentials = { ...base64Credentials };
+      Object.keys(individualCredentials).forEach(key => {
+        if (individualCredentials[key]) {
+          mergedCredentials[key] = individualCredentials[key];
+        }
+      });
+
+      return mergedCredentials;
+    } catch (error) {
+      console.error('❌ Failed to parse Base64 OAuth credentials:', error.message);
+    }
+  }
+
+  // If both methods fail, return individual credentials (even if incomplete)
+  console.warn('⚠️ Using incomplete individual OAuth credentials as fallback');
+  return individualCredentials;
 }
 
 // Load credentials once at module level

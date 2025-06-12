@@ -98,12 +98,19 @@ app.get('/env-check', (req, res) => {
     environment: process.env.NODE_ENV || 'development',
     port: process.env.PORT || 'not set',
 
-    // Database
+    // Database (Individual vars preferred, Base64 as fallback)
     firebase: {
-      project_id: process.env.FIREBASE_PROJECT_ID ? '✅ Set' : '❌ Missing',
-      private_key: process.env.FIREBASE_PRIVATE_KEY ? '✅ Set' : '❌ Missing',
-      client_email: process.env.FIREBASE_CLIENT_EMAIL ? '✅ Set' : '❌ Missing',
-      service_account_base64: process.env.FIREBASE_SERVICE_ACCOUNT_BASE64 ? '✅ Set' : '❌ Not set (fallback to individual vars)'
+      individual_vars: {
+        project_id: process.env.FIREBASE_PROJECT_ID ? '✅ Set' : '❌ Missing',
+        private_key: process.env.FIREBASE_PRIVATE_KEY ? '✅ Set' : '❌ Missing',
+        client_email: process.env.FIREBASE_CLIENT_EMAIL ? '✅ Set' : '❌ Missing'
+      },
+      fallback_base64: process.env.FIREBASE_SERVICE_ACCOUNT_BASE64 ? '✅ Available' : '❌ Not available',
+      status: (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL)
+        ? '✅ Using individual variables'
+        : process.env.FIREBASE_SERVICE_ACCOUNT_BASE64
+          ? '🔄 Using Base64 fallback'
+          : '❌ No valid configuration'
     },
 
     // OAuth Credentials
@@ -128,7 +135,24 @@ app.get('/env-check', (req, res) => {
         client_secret: process.env.INSTAGRAM_CLIENT_SECRET ? '✅ Set' : '❌ Missing',
         redirect_uri: process.env.INSTAGRAM_REDIRECT_URI || '❌ Missing'
       },
-      oauth_base64: process.env.OAUTH_CREDENTIALS_BASE64 ? '✅ Set' : '❌ Not set (fallback to individual vars)'
+      fallback_base64: process.env.OAUTH_CREDENTIALS_BASE64 ? '✅ Available' : '❌ Not available',
+      status: (() => {
+        const requiredKeys = [
+          'TWITTER_CLIENT_ID', 'TWITTER_CLIENT_SECRET', 'TWITTER_REDIRECT_URI',
+          'LINKEDIN_CLIENT_ID', 'LINKEDIN_CLIENT_SECRET', 'LINKEDIN_REDIRECT_URI',
+          'FACEBOOK_APP_ID', 'FACEBOOK_APP_SECRET', 'FACEBOOK_REDIRECT_URI',
+          'INSTAGRAM_CLIENT_ID', 'INSTAGRAM_CLIENT_SECRET', 'INSTAGRAM_REDIRECT_URI'
+        ];
+        const missingKeys = requiredKeys.filter(key => !process.env[key]);
+
+        if (missingKeys.length === 0) {
+          return '✅ Using individual variables';
+        } else if (process.env.OAUTH_CREDENTIALS_BASE64) {
+          return `🔄 Using Base64 fallback (missing: ${missingKeys.join(', ')})`;
+        } else {
+          return `❌ Incomplete configuration (missing: ${missingKeys.join(', ')})`;
+        }
+      })()
     },
 
     // Other Services

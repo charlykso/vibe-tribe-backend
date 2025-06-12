@@ -27,7 +27,8 @@
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "deploy:netlify": "npm run build && npx netlify-cli deploy --prod --dir=dist"
+    "deploy:netlify": "npm run build && npx netlify-cli deploy --prod --dir=dist",
+    "generate-base64": "node scripts/generate-base64-credentials.js"
   },
   "dependencies": {
     "@fullcalendar/daygrid": "^6.1.17",
