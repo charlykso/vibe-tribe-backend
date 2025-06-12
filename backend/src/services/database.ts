@@ -123,76 +123,80 @@ export const initializeDatabase = async (): Promise<void> => {
       // Try to use complete Firebase service account JSON first
       let serviceAccount: any = null;
 
-      // Method 1: Individual environment variables (preferred)
-      const projectId = process.env.FIREBASE_PROJECT_ID;
-      const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-
-      if (projectId && clientEmail) {
-        console.log('✅ Using individual Firebase environment variables');
-        // Handle private key formatting for different environments
-        let privateKey = process.env.FIREBASE_PRIVATE_KEY;
-
-        // Try Base64 encoded key first (safer for environment variables)
-        const base64Key = process.env.FIREBASE_PRIVATE_KEY_BASE64;
-        if (base64Key) {
-          try {
-            privateKey = Buffer.from(base64Key, 'base64').toString('utf8');
-            console.log('✅ Using Base64 encoded private key');
-          } catch (error) {
-            console.warn('Failed to decode Base64 private key, falling back to regular key');
-          }
+      // Method 1: Complete Firebase service account JSON (Base64 encoded - PREFERRED for production)
+      const firebaseServiceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
+      if (firebaseServiceAccountBase64) {
+        try {
+          console.log('🔄 Attempting to use Firebase service account Base64...');
+          const serviceAccountJson = Buffer.from(firebaseServiceAccountBase64, 'base64').toString('utf8');
+          serviceAccount = JSON.parse(serviceAccountJson);
+          console.log('✅ Using complete Firebase service account JSON (Base64)');
+        } catch (error) {
+          console.error('❌ Failed to parse Firebase service account JSON:', error.message);
+          console.log('⚠️ Falling back to individual environment variables...');
         }
+      }
 
-        if (privateKey) {
-          // Remove any surrounding quotes
-          privateKey = privateKey.replace(/^["']|["']$/g, '');
+      // Method 2: Individual environment variables (fallback)
+      if (!serviceAccount) {
+        const projectId = process.env.FIREBASE_PROJECT_ID;
+        const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
 
-          // Replace escaped newlines with actual newlines
-          privateKey = privateKey.replace(/\\n/g, '\n');
+        if (projectId && clientEmail) {
+          console.log('✅ Using individual Firebase environment variables');
+          // Handle private key formatting for different environments
+          let privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
-          // Only try to decode as Base64 if it doesn't look like a PEM key
-          // and doesn't contain newlines (which would indicate it's already formatted)
-          if (!privateKey.includes('-----BEGIN PRIVATE KEY-----') &&
-              !privateKey.includes('\n') &&
-              privateKey.length > 100) {
+          // Try Base64 encoded key first (safer for environment variables)
+          const base64Key = process.env.FIREBASE_PRIVATE_KEY_BASE64;
+          if (base64Key) {
             try {
-              const decoded = Buffer.from(privateKey, 'base64').toString('utf8');
-              // Verify the decoded content looks like a PEM key
-              if (decoded.includes('-----BEGIN PRIVATE KEY-----')) {
-                privateKey = decoded;
-                console.log('✅ Successfully decoded Base64 private key');
-              }
+              privateKey = Buffer.from(base64Key, 'base64').toString('utf8');
+              console.log('✅ Using Base64 encoded private key');
             } catch (error) {
-              console.warn('Private key is not Base64 encoded, using as-is');
+              console.warn('Failed to decode Base64 private key, falling back to regular key');
             }
           }
-        }
 
-        serviceAccount = {
-          type: "service_account",
-          project_id: projectId,
-          private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-          private_key: privateKey,
-          client_email: clientEmail,
-          client_id: process.env.FIREBASE_CLIENT_ID,
-          auth_uri: process.env.FIREBASE_AUTH_URI || 'https://accounts.google.com/o/oauth2/auth',
-          token_uri: process.env.FIREBASE_TOKEN_URI || 'https://oauth2.googleapis.com/token',
-          auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL || 'https://www.googleapis.com/oauth2/v1/certs',
-          client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL
-        };
-      } else {
-        // Method 2: Complete Firebase service account JSON (Base64 encoded fallback)
-        console.log('⚠️ Missing individual Firebase credentials, attempting Base64 encoded service account...');
+          if (privateKey) {
+            // Remove any surrounding quotes
+            privateKey = privateKey.replace(/^["']|["']$/g, '');
 
-        const firebaseServiceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
-        if (firebaseServiceAccountBase64) {
-          try {
-            const serviceAccountJson = Buffer.from(firebaseServiceAccountBase64, 'base64').toString('utf8');
-            serviceAccount = JSON.parse(serviceAccountJson);
-            console.log('✅ Using complete Firebase service account JSON (Base64)');
-          } catch (error) {
-            console.error('❌ Failed to parse Firebase service account JSON:', error.message);
+            // Replace escaped newlines with actual newlines
+            privateKey = privateKey.replace(/\\n/g, '\n');
+
+            // Only try to decode as Base64 if it doesn't look like a PEM key
+            // and doesn't contain newlines (which would indicate it's already formatted)
+            if (!privateKey.includes('-----BEGIN PRIVATE KEY-----') &&
+                !privateKey.includes('\n') &&
+                privateKey.length > 100) {
+              try {
+                const decoded = Buffer.from(privateKey, 'base64').toString('utf8');
+                // Verify the decoded content looks like a PEM key
+                if (decoded.includes('-----BEGIN PRIVATE KEY-----')) {
+                  privateKey = decoded;
+                  console.log('✅ Successfully decoded Base64 private key');
+                }
+              } catch (error) {
+                console.warn('Private key is not Base64 encoded, using as-is');
+              }
+            }
           }
+
+          serviceAccount = {
+            type: "service_account",
+            project_id: projectId,
+            private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+            private_key: privateKey,
+            client_email: clientEmail,
+            client_id: process.env.FIREBASE_CLIENT_ID,
+            auth_uri: process.env.FIREBASE_AUTH_URI || 'https://accounts.google.com/o/oauth2/auth',
+            token_uri: process.env.FIREBASE_TOKEN_URI || 'https://oauth2.googleapis.com/token',
+            auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL || 'https://www.googleapis.com/oauth2/v1/certs',
+            client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL
+          };
+        } else {
+          console.error('⚠️ Missing individual Firebase credentials and no Base64 service account available');
         }
       }
 

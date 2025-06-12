@@ -76,11 +76,22 @@ function generateOAuthBase64() {
 function generateFirebaseBase64() {
   console.log('🔥 Generating Firebase Service Account Base64...\n')
 
+  // Get the private key and ensure it's properly formatted
+  let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
+
+  // Remove quotes if they exist and ensure proper newline characters
+  if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+    privateKey = privateKey.slice(1, -1);
+  }
+
+  // Ensure the private key has proper line breaks (not literal \n)
+  privateKey = privateKey.replace(/\\n/g, '\n');
+
   const serviceAccount = {
     type: 'service_account',
     project_id: process.env.FIREBASE_PROJECT_ID || '',
     private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID || '',
-    private_key: process.env.FIREBASE_PRIVATE_KEY || '',
+    private_key: privateKey,
     client_email: process.env.FIREBASE_CLIENT_EMAIL || '',
     client_id: process.env.FIREBASE_CLIENT_ID || '',
     auth_uri:
