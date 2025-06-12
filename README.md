@@ -1,6 +1,12 @@
-# VibeTribe - Social Media Management Platform
+# SocialTribe - Social Media Management Platform
 
-VibeTribe is a comprehensive social media management platform that enables teams to create, schedule, and manage content across multiple social media platforms from a unified dashboard.
+SocialTribe is a comprehensive social media management platform that enables teams to create, schedule, and manage content across multiple social media platforms from a unified dashboard.
+
+## 📖 Quick Links
+
+- **[🚀 Deployment Guide](./DEPLOYMENT-GUIDE.md)** - Complete deployment instructions with Base64 credential system
+- **[🔐 Base64 Credentials](./BASE64-CREDENTIALS.md)** - Quick reference for credential management
+- **[🛠️ Environment Check Tool](./test-render-env.html)** - Verify your deployment configuration
 
 ## 🚀 Features
 
@@ -112,10 +118,13 @@ npm install
 
 ```bash
 # Copy environment template
-cp .env.example .env
+cp .env.example backend/.env
 
 # Configure your environment variables
 # See Environment Configuration section below
+
+# For production deployment, generate Base64 credentials
+npm run generate-base64
 ```
 
 4. **Start development servers**
@@ -136,58 +145,80 @@ npm run server:dev   # Backend only
 
 ## ⚙️ Environment Configuration
 
-### Frontend Environment Variables
+SocialTribe uses a flexible credential system that supports both individual environment variables (development) and Base64 encoded credentials (production).
+
+### 🛠️ Development Setup (Individual Variables)
+
+Create `backend/.env` with individual variables:
 
 ```env
 # Firebase Configuration
-VITE_FIREBASE_API_KEY=your_firebase_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-VITE_FIREBASE_APP_ID=your_app_id
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+FIREBASE_CLIENT_EMAIL=your-service-account@project.iam.gserviceaccount.com
 
-# API Configuration
-VITE_API_URL=http://localhost:3001
-VITE_WEBSOCKET_URL=http://localhost:3001
-```
+# OAuth Credentials
+TWITTER_CLIENT_ID=your-twitter-client-id
+TWITTER_CLIENT_SECRET=your-twitter-client-secret
+TWITTER_REDIRECT_URI=https://your-backend.onrender.com/api/v1/oauth/twitter/callback
 
-### Backend Environment Variables
+LINKEDIN_CLIENT_ID=your-linkedin-client-id
+LINKEDIN_CLIENT_SECRET=your-linkedin-client-secret
+LINKEDIN_REDIRECT_URI=https://your-backend.onrender.com/api/v1/oauth/linkedin/callback
 
-```env
 # Server Configuration
 PORT=3001
 NODE_ENV=development
-CORS_ORIGIN=http://localhost:8080
-
-# Firebase Admin
-FIREBASE_SERVICE_ACCOUNT_BASE64=your_base64_encoded_service_account
-
-# JWT Configuration
-JWT_SECRET=your_jwt_secret
-JWT_EXPIRES_IN=7d
-
-# Redis Configuration
-REDIS_URL=redis://localhost:6379
-
-# Cloudinary Configuration
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
-
-# Social Media OAuth (Base64 encoded)
-TWITTER_OAUTH_BASE64=your_base64_encoded_credentials
-LINKEDIN_OAUTH_BASE64=your_base64_encoded_credentials
-FACEBOOK_OAUTH_BASE64=your_base64_encoded_credentials
-INSTAGRAM_OAUTH_BASE64=your_base64_encoded_credentials
+JWT_SECRET=your-jwt-secret
+CORS_ORIGIN=https://your-frontend.netlify.app
+FRONTEND_URL=https://your-frontend.netlify.app
 ```
 
+### 🚀 Production Setup (Base64 Credentials)
+
+Generate Base64 credentials for secure deployment:
+
+```bash
+npm run generate-base64
+```
+
+Add to your production environment (Render):
+
+```env
+# Base64 Encoded Credentials (Production)
+OAUTH_CREDENTIALS_BASE64=ewogICJUV0lUVEVSX0NM...
+FIREBASE_SERVICE_ACCOUNT_BASE64=ewogICJ0eXBlIjogInNlcn...
+
+# Other Production Variables
+NODE_ENV=production
+JWT_SECRET=your-production-jwt-secret
+CORS_ORIGIN=https://your-frontend.netlify.app
+FRONTEND_URL=https://your-frontend.netlify.app
+```
+
+### 🔄 How It Works
+
+The system automatically chooses the best available credentials:
+
+1. **Individual Variables** (preferred for development)
+2. **Base64 Credentials** (fallback for production)
+3. **Error** if neither is available
+
+**See [DEPLOYMENT-GUIDE.md](./DEPLOYMENT-GUIDE.md) for detailed instructions.**
+
 ## 📚 Documentation
+
+### Deployment & Configuration
+
+- **[🚀 Deployment Guide](./DEPLOYMENT-GUIDE.md)** - Complete deployment instructions
+- **[🔐 Base64 Credentials](./BASE64-CREDENTIALS.md)** - Quick credential reference
+- **[🛠️ Environment Check Tool](./test-render-env.html)** - Verify deployment configuration
+
+### Development
 
 - [Frontend Documentation](./FRONTEND_DOCUMENTATION.md)
 - [Backend Documentation](./BACKEND_DOCUMENTATION.md)
 - [API Reference](./backend/README.md)
-- [Deployment Guide](./DEPLOYMENT_GUIDE.md)
 - [Contributing Guidelines](./CONTRIBUTING.md)
 
 ## 🧪 Testing
@@ -205,20 +236,33 @@ npm run test:coverage
 
 ## 📦 Deployment
 
-### Frontend (Netlify)
+### Quick Deployment
 
 ```bash
+# 1. Generate Base64 credentials for production
+npm run generate-base64
+
+# 2. Deploy backend (auto-deploys on git push)
+git add .
+git commit -m "Deploy with Base64 credentials"
+git push
+
+# 3. Deploy frontend to Netlify
 npm run build
-# Deploy dist/ folder to Netlify
+npm run deploy:netlify
 ```
 
-### Backend (Render)
+### Detailed Instructions
 
-```bash
-cd backend
-npm run build
-# Deploy to Render with environment variables
-```
+- **[🚀 Complete Deployment Guide](./DEPLOYMENT-GUIDE.md)** - Step-by-step deployment instructions
+- **[🔐 Base64 Credential System](./BASE64-CREDENTIALS.md)** - Credential management reference
+
+### Platform-Specific
+
+- **Frontend**: Netlify (auto-deploy from git)
+- **Backend**: Render (auto-deploy from git)
+- **Database**: Firebase Firestore
+- **Media**: Cloudinary CDN
 
 ## 🤝 Contributing
 

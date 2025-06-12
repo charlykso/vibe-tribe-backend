@@ -25,3 +25,16 @@ dist-ssr
 
 # Local Netlify folder
 .netlify
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.development
+backend/.env
+backend/.env.local
+backend/.env.production
+backend/.env.development
+
+# Deployment credentials (contains sensitive Base64 encoded data)
+deployment-credentials.env
