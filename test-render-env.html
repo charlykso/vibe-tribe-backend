@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Render Environment Variables Check</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .section h3 {
+            margin-top: 0;
+            color: #555;
+        }
+        .env-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .env-item:last-child {
+            border-bottom: none;
+        }
+        .env-key {
+            font-weight: bold;
+            color: #333;
+        }
+        .env-status {
+            font-weight: bold;
+        }
+        .set { color: #28a745; }
+        .missing { color: #dc3545; }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        pre {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border: 1px solid #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Render Environment Variables Check</h1>
+        
+        <div class="info status">
+            <strong>Purpose:</strong> Check if your Render deployment has all required environment variables set correctly.
+        </div>
+
+        <div style="text-align: center; margin: 20px 0;">
+            <button onclick="checkHealth()">Check Backend Health</button>
+            <button onclick="checkEnvironment()">Check Environment Variables</button>
+            <button onclick="testOAuth()">Test OAuth Endpoints</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'https://vibe-tribe-backend-8yvp.onrender.com';
+        
+        function showLoading(message) {
+            document.getElementById('results').innerHTML = `
+                <div class="loading">
+                    <div class="info status">${message}</div>
+                </div>
+            `;
+        }
+        
+        function showError(message) {
+            document.getElementById('results').innerHTML = `
+                <div class="error status">
+                    <strong>❌ Error:</strong> ${message}
+                </div>
+            `;
+        }
+        
+        async function checkHealth() {
+            showLoading('🔄 Checking backend health...');
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/health`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('results').innerHTML = `
+                        <div class="success status">
+                            <strong>✅ Backend Health Check Passed!</strong>
+                        </div>
+                        <div class="section">
+                            <h3>Health Status</h3>
+                            <div class="env-item">
+                                <span class="env-key">Status:</span>
+                                <span class="env-status set">${data.status}</span>
+                            </div>
+                            <div class="env-item">
+                                <span class="env-key">Environment:</span>
+                                <span class="env-status">${data.environment}</span>
+                            </div>
+                            <div class="env-item">
+                                <span class="env-key">Uptime:</span>
+                                <span class="env-status">${Math.floor(data.uptime)} seconds</span>
+                            </div>
+                            <div class="env-item">
+                                <span class="env-key">Timestamp:</span>
+                                <span class="env-status">${data.timestamp}</span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${data.message || 'Unknown error'}`);
+                }
+            } catch (error) {
+                showError(`Backend health check failed: ${error.message}`);
+            }
+        }
+        
+        async function checkEnvironment() {
+            showLoading('🔄 Checking environment variables...');
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/env-check`, {
+                    headers: {
+                        'X-Debug-Token': 'check-env-vars-2024'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    let html = `
+                        <div class="success status">
+                            <strong>✅ Environment Variables Check Complete!</strong>
+                        </div>
+                    `;
+                    
+                    // Firebase section
+                    html += `
+                        <div class="section">
+                            <h3>🔥 Firebase Configuration</h3>
+                            ${Object.entries(data.firebase).map(([key, value]) => `
+                                <div class="env-item">
+                                    <span class="env-key">${key}:</span>
+                                    <span class="env-status ${value.includes('✅') ? 'set' : 'missing'}">${value}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    
+                    // OAuth section
+                    html += `
+                        <div class="section">
+                            <h3>🔐 OAuth Configuration</h3>
+                    `;
+                    
+                    Object.entries(data.oauth).forEach(([platform, config]) => {
+                        if (typeof config === 'object') {
+                            html += `<h4>${platform.toUpperCase()}</h4>`;
+                            Object.entries(config).forEach(([key, value]) => {
+                                html += `
+                                    <div class="env-item">
+                                        <span class="env-key">${key}:</span>
+                                        <span class="env-status ${value.includes('✅') ? 'set' : 'missing'}">${value}</span>
+                                    </div>
+                                `;
+                            });
+                        } else {
+                            html += `
+                                <div class="env-item">
+                                    <span class="env-key">${platform}:</span>
+                                    <span class="env-status ${config.includes('✅') ? 'set' : 'missing'}">${config}</span>
+                                </div>
+                            `;
+                        }
+                    });
+                    
+                    html += `</div>`;
+                    
+                    // Services section
+                    html += `
+                        <div class="section">
+                            <h3>🛠️ Other Services</h3>
+                            ${Object.entries(data.services).map(([key, value]) => {
+                                if (typeof value === 'object') {
+                                    let subHtml = `<h4>${key.toUpperCase()}</h4>`;
+                                    Object.entries(value).forEach(([subKey, subValue]) => {
+                                        subHtml += `
+                                            <div class="env-item">
+                                                <span class="env-key">${subKey}:</span>
+                                                <span class="env-status ${subValue.includes('✅') ? 'set' : 'missing'}">${subValue}</span>
+                                            </div>
+                                        `;
+                                    });
+                                    return subHtml;
+                                } else {
+                                    return `
+                                        <div class="env-item">
+                                            <span class="env-key">${key}:</span>
+                                            <span class="env-status ${value.includes('✅') ? 'set' : 'missing'}">${value}</span>
+                                        </div>
+                                    `;
+                                }
+                            }).join('')}
+                        </div>
+                    `;
+                    
+                    document.getElementById('results').innerHTML = html;
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${data.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                showError(`Environment check failed: ${error.message}`);
+            }
+        }
+        
+        async function testOAuth() {
+            showLoading('🔄 Testing OAuth endpoints...');
+            
+            const platforms = ['twitter', 'linkedin', 'facebook', 'instagram'];
+            let html = `
+                <div class="info status">
+                    <strong>🔐 OAuth Endpoints Test</strong>
+                </div>
+            `;
+            
+            for (const platform of platforms) {
+                try {
+                    const response = await fetch(`${BACKEND_URL}/api/v1/oauth/${platform}/callback?test=true`);
+                    const status = response.status;
+                    
+                    html += `
+                        <div class="section">
+                            <h3>${platform.toUpperCase()} OAuth Callback</h3>
+                            <div class="env-item">
+                                <span class="env-key">Endpoint:</span>
+                                <span class="env-status">/api/v1/oauth/${platform}/callback</span>
+                            </div>
+                            <div class="env-item">
+                                <span class="env-key">Status:</span>
+                                <span class="env-status ${status < 500 ? 'set' : 'missing'}">
+                                    ${status < 500 ? '✅ Accessible' : '❌ Error'} (HTTP ${status})
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                } catch (error) {
+                    html += `
+                        <div class="section">
+                            <h3>${platform.toUpperCase()} OAuth Callback</h3>
+                            <div class="env-item">
+                                <span class="env-key">Status:</span>
+                                <span class="env-status missing">❌ Error: ${error.message}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            
+            document.getElementById('results').innerHTML = html;
+        }
+        
+        // Auto-check health on page load
+        window.onload = function() {
+            checkHealth();
+        };
+    </script>
+</body>
+</html>
