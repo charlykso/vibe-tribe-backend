@@ -83,6 +83,30 @@ function loadOAuthCredentials() {
 // Load credentials once at module level
 const oauthCredentials = loadOAuthCredentials();
 
+// Debug: Log loaded credentials (without secrets)
+console.log('🔐 OAuth Credentials Status:', {
+  twitter: {
+    clientId: oauthCredentials.TWITTER_CLIENT_ID ? `${oauthCredentials.TWITTER_CLIENT_ID.substring(0, 10)}...` : 'missing',
+    clientSecret: oauthCredentials.TWITTER_CLIENT_SECRET ? 'present' : 'missing',
+    redirectUri: oauthCredentials.TWITTER_REDIRECT_URI || 'missing'
+  },
+  linkedin: {
+    clientId: oauthCredentials.LINKEDIN_CLIENT_ID ? `${oauthCredentials.LINKEDIN_CLIENT_ID.substring(0, 10)}...` : 'missing',
+    clientSecret: oauthCredentials.LINKEDIN_CLIENT_SECRET ? 'present' : 'missing',
+    redirectUri: oauthCredentials.LINKEDIN_REDIRECT_URI || 'missing'
+  },
+  facebook: {
+    appId: oauthCredentials.FACEBOOK_APP_ID ? `${oauthCredentials.FACEBOOK_APP_ID.substring(0, 10)}...` : 'missing',
+    appSecret: oauthCredentials.FACEBOOK_APP_SECRET ? 'present' : 'missing',
+    redirectUri: oauthCredentials.FACEBOOK_REDIRECT_URI || 'missing'
+  },
+  instagram: {
+    clientId: oauthCredentials.INSTAGRAM_CLIENT_ID ? `${oauthCredentials.INSTAGRAM_CLIENT_ID.substring(0, 10)}...` : 'missing',
+    clientSecret: oauthCredentials.INSTAGRAM_CLIENT_SECRET ? 'present' : 'missing',
+    redirectUri: oauthCredentials.INSTAGRAM_REDIRECT_URI || 'missing'
+  }
+});
+
 // Twitter OAuth Service
 export class TwitterOAuthService {
   private config: OAuthConfig;

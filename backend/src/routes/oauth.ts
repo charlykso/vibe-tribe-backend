@@ -383,17 +383,36 @@ router.get('/twitter/callback', asyncHandler(async (req, res) => {
   }
 
   try {
+    console.log('🐦 Twitter callback - checking state:', state);
+
     // Verify state parameter
     const stateData = await getOAuthState(state as string);
     if (!stateData) {
-      console.error('Invalid or expired OAuth state:', state);
+      console.error('❌ Twitter OAuth state not found:', state);
+
+      // Check if we have any states in the database
+      const firestore = getFirestoreClient();
+      const allStates = await firestore.collection('oauth_states').get();
+      console.log('📊 Available OAuth states in database:', allStates.size);
+
       return res.json({
         error: 'Access denied. No token provided.',
         code: 'NO_TOKEN',
         message: 'Invalid or expired OAuth state',
-        details: { state, message: 'State not found in database or expired' }
+        details: {
+          state,
+          message: 'State not found in database or expired',
+          availableStates: allStates.size,
+          timestamp: new Date().toISOString()
+        }
       });
     }
+
+    console.log('✅ Twitter OAuth state found:', {
+      userId: stateData.userId,
+      platform: stateData.platform,
+      timestamp: new Date(stateData.timestamp).toISOString()
+    });
 
     // Verify platform matches
     if (stateData.platform !== 'twitter') {
