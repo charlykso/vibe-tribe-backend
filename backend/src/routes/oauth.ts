@@ -852,4 +852,31 @@ router.get('/linkedin/callback', asyncHandler(async (req, res) => {
   }
 }));
 
+// Debug endpoint to test OAuth service initialization
+router.get('/debug/credentials', (req, res) => {
+  try {
+    const twitterService = OAuthServiceFactory.getService('twitter');
+    const linkedinService = OAuthServiceFactory.getService('linkedin');
+    const facebookService = OAuthServiceFactory.getService('facebook');
+    const instagramService = OAuthServiceFactory.getService('instagram');
+
+    res.json({
+      timestamp: new Date().toISOString(),
+      message: 'OAuth services initialized successfully',
+      services: {
+        twitter: twitterService ? 'initialized' : 'failed',
+        linkedin: linkedinService ? 'initialized' : 'failed',
+        facebook: facebookService ? 'initialized' : 'failed',
+        instagram: instagramService ? 'initialized' : 'failed'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'OAuth service initialization failed',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 export default router;
