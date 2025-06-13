@@ -24,22 +24,76 @@ const callbackSchema = z.object({
   codeVerifier: z.string().optional() // For Twitter PKCE
 });
 
-// Store OAuth states temporarily (in production, use Redis)
-const oauthStates = new Map<string, { 
-  userId: string; 
-  organizationId: string; 
-  platform: string; 
+// OAuth state management using Firestore for persistence
+interface OAuthState {
+  userId: string;
+  organizationId: string;
+  platform: string;
   codeVerifier?: string;
   timestamp: number;
-}>();
+  expiresAt: number;
+}
 
-// Clean up expired states (older than 10 minutes)
-setInterval(() => {
-  const now = Date.now();
-  for (const [state, data] of oauthStates.entries()) {
-    if (now - data.timestamp > 10 * 60 * 1000) {
-      oauthStates.delete(state);
+// Store OAuth state in Firestore
+async function storeOAuthState(state: string, data: Omit<OAuthState, 'expiresAt'>): Promise<void> {
+  const firestore = getFirestoreClient();
+  const expiresAt = Date.now() + (10 * 60 * 1000); // 10 minutes from now
+
+  await firestore.collection('oauth_states').doc(state).set({
+    ...data,
+    expiresAt
+  });
+}
+
+// Retrieve OAuth state from Firestore
+async function getOAuthState(state: string): Promise<OAuthState | null> {
+  const firestore = getFirestoreClient();
+  const doc = await firestore.collection('oauth_states').doc(state).get();
+
+  if (!doc.exists) {
+    return null;
+  }
+
+  const data = doc.data() as OAuthState;
+
+  // Check if expired
+  if (Date.now() > data.expiresAt) {
+    // Clean up expired state
+    await firestore.collection('oauth_states').doc(state).delete();
+    return null;
+  }
+
+  return data;
+}
+
+// Delete OAuth state from Firestore
+async function deleteOAuthState(state: string): Promise<void> {
+  const firestore = getFirestoreClient();
+  await firestore.collection('oauth_states').doc(state).delete();
+}
+
+// Clean up expired states (runs every 5 minutes)
+setInterval(async () => {
+  try {
+    const firestore = getFirestoreClient();
+    const now = Date.now();
+
+    const expiredStates = await firestore
+      .collection('oauth_states')
+      .where('expiresAt', '<', now)
+      .get();
+
+    const batch = firestore.batch();
+    expiredStates.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+
+    if (!expiredStates.empty) {
+      await batch.commit();
+      console.log(`🧹 Cleaned up ${expiredStates.size} expired OAuth states`);
     }
+  } catch (error) {
+    console.error('❌ Error cleaning up OAuth states:', error);
   }
 }, 5 * 60 * 1000); // Clean every 5 minutes
 
@@ -77,8 +131,8 @@ router.post('/initiate', asyncHandler(async (req: AuthenticatedRequest, res) => 
       authUrl = (oauthService as any).generateAuthUrl(state);
     }
 
-    // Store state information
-    oauthStates.set(state, {
+    // Store state information in Firestore
+    await storeOAuthState(state, {
       userId: user.id,
       organizationId: user.organization_id,
       platform,
@@ -111,7 +165,7 @@ router.post('/callback', asyncHandler(async (req: AuthenticatedRequest, res) => 
   const { platform, code, state, codeVerifier } = validation.data;
 
   // Verify state parameter
-  const stateData = oauthStates.get(state);
+  const stateData = await getOAuthState(state);
   if (!stateData) {
     throw new UnauthorizedError('Invalid or expired OAuth state');
   }
@@ -122,7 +176,7 @@ router.post('/callback', asyncHandler(async (req: AuthenticatedRequest, res) => 
   }
 
   // Clean up the state
-  oauthStates.delete(state);
+  await deleteOAuthState(state);
 
   try {
     // Get OAuth service and handle callback
@@ -330,14 +384,14 @@ router.get('/twitter/callback', asyncHandler(async (req, res) => {
 
   try {
     // Verify state parameter
-    const stateData = oauthStates.get(state as string);
+    const stateData = await getOAuthState(state as string);
     if (!stateData) {
       console.error('Invalid or expired OAuth state:', state);
       return res.json({
         error: 'Access denied. No token provided.',
         code: 'NO_TOKEN',
         message: 'Invalid or expired OAuth state',
-        details: { state, availableStates: Array.from(oauthStates.keys()) }
+        details: { state, message: 'State not found in database or expired' }
       });
     }
 
@@ -371,7 +425,7 @@ router.get('/twitter/callback', asyncHandler(async (req, res) => {
     });
 
     // Clean up the state
-    oauthStates.delete(state as string);
+    await deleteOAuthState(state as string);
 
     // Get Twitter OAuth service and handle callback
     const twitterService = OAuthServiceFactory.getService('twitter');
@@ -469,7 +523,7 @@ router.get('/facebook/callback', asyncHandler(async (req, res) => {
 
   try {
     // Verify state parameter
-    const stateData = oauthStates.get(state as string);
+    const stateData = await getOAuthState(state as string);
     if (!stateData) {
       console.error('Invalid or expired OAuth state:', state);
       return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=invalid_state`);
@@ -482,7 +536,7 @@ router.get('/facebook/callback', asyncHandler(async (req, res) => {
     }
 
     // Clean up the state
-    oauthStates.delete(state as string);
+    await deleteOAuthState(state as string);
 
     // Get Facebook OAuth service and handle callback
     const facebookService = OAuthServiceFactory.getService('facebook');
@@ -570,7 +624,7 @@ router.get('/instagram/callback', asyncHandler(async (req, res) => {
 
   try {
     // Verify state parameter
-    const stateData = oauthStates.get(state as string);
+    const stateData = await getOAuthState(state as string);
     if (!stateData) {
       console.error('Invalid or expired OAuth state:', state);
       return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=invalid_state`);
@@ -583,7 +637,7 @@ router.get('/instagram/callback', asyncHandler(async (req, res) => {
     }
 
     // Clean up the state
-    oauthStates.delete(state as string);
+    await deleteOAuthState(state as string);
 
     // Get Instagram OAuth service and handle callback
     const instagramService = OAuthServiceFactory.getService('instagram');
@@ -671,7 +725,7 @@ router.get('/linkedin/callback', asyncHandler(async (req, res) => {
 
   try {
     // Verify state parameter
-    const stateData = oauthStates.get(state as string);
+    const stateData = await getOAuthState(state as string);
     if (!stateData) {
       console.error('Invalid or expired OAuth state:', state);
       return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=invalid_state`);
@@ -684,7 +738,7 @@ router.get('/linkedin/callback', asyncHandler(async (req, res) => {
     }
 
     // Clean up the state
-    oauthStates.delete(state as string);
+    await deleteOAuthState(state as string);
 
     // Get LinkedIn OAuth service and handle callback
     const linkedinService = OAuthServiceFactory.getService('linkedin');

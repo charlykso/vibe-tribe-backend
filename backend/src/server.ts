@@ -84,99 +84,19 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Environment variables check endpoint (for debugging)
-app.get('/env-check', (req: Request, res: Response) => {
-  // Only allow with special header for security
-  const hasDebugHeader = req.headers['x-debug-token'] === 'check-env-vars-2024';
-
-  if (!hasDebugHeader) {
-    return res.status(403).json({ error: 'Environment check requires debug token' });
-  }
-
-  const envCheck = {
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    port: process.env.PORT || 'not set',
-
-    // Database (Individual vars preferred, Base64 as fallback)
-    firebase: {
-      individual_vars: {
-        project_id: process.env.FIREBASE_PROJECT_ID ? '✅ Set' : '❌ Missing',
-        private_key: process.env.FIREBASE_PRIVATE_KEY ? '✅ Set' : '❌ Missing',
-        client_email: process.env.FIREBASE_CLIENT_EMAIL ? '✅ Set' : '❌ Missing'
-      },
-      fallback_base64: process.env.FIREBASE_SERVICE_ACCOUNT_BASE64 ? '✅ Available' : '❌ Not available',
-      status: (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL)
-        ? '✅ Using individual variables'
-        : process.env.FIREBASE_SERVICE_ACCOUNT_BASE64
-          ? '🔄 Using Base64 fallback'
-          : '❌ No valid configuration'
-    },
-
-    // OAuth Credentials
-    oauth: {
-      twitter: {
-        client_id: process.env.TWITTER_CLIENT_ID ? '✅ Set' : '❌ Missing',
-        client_secret: process.env.TWITTER_CLIENT_SECRET ? '✅ Set' : '❌ Missing',
-        redirect_uri: process.env.TWITTER_REDIRECT_URI || '❌ Missing'
-      },
-      linkedin: {
-        client_id: process.env.LINKEDIN_CLIENT_ID ? '✅ Set' : '❌ Missing',
-        client_secret: process.env.LINKEDIN_CLIENT_SECRET ? '✅ Set' : '❌ Missing',
-        redirect_uri: process.env.LINKEDIN_REDIRECT_URI || '❌ Missing'
-      },
-      facebook: {
-        app_id: process.env.FACEBOOK_APP_ID ? '✅ Set' : '❌ Missing',
-        app_secret: process.env.FACEBOOK_APP_SECRET ? '✅ Set' : '❌ Missing',
-        redirect_uri: process.env.FACEBOOK_REDIRECT_URI || '❌ Missing'
-      },
-      instagram: {
-        client_id: process.env.INSTAGRAM_CLIENT_ID ? '✅ Set' : '❌ Missing',
-        client_secret: process.env.INSTAGRAM_CLIENT_SECRET ? '✅ Set' : '❌ Missing',
-        redirect_uri: process.env.INSTAGRAM_REDIRECT_URI || '❌ Missing'
-      },
-      fallback_base64: process.env.OAUTH_CREDENTIALS_BASE64 ? '✅ Available' : '❌ Not available',
-      status: (() => {
-        const requiredKeys = [
-          'TWITTER_CLIENT_ID', 'TWITTER_CLIENT_SECRET', 'TWITTER_REDIRECT_URI',
-          'LINKEDIN_CLIENT_ID', 'LINKEDIN_CLIENT_SECRET', 'LINKEDIN_REDIRECT_URI',
-          'FACEBOOK_APP_ID', 'FACEBOOK_APP_SECRET', 'FACEBOOK_REDIRECT_URI',
-          'INSTAGRAM_CLIENT_ID', 'INSTAGRAM_CLIENT_SECRET', 'INSTAGRAM_REDIRECT_URI'
-        ];
-        const missingKeys = requiredKeys.filter(key => !process.env[key]);
-
-        if (missingKeys.length === 0) {
-          return '✅ Using individual variables';
-        } else if (process.env.OAUTH_CREDENTIALS_BASE64) {
-          return `🔄 Using Base64 fallback (missing: ${missingKeys.join(', ')})`;
-        } else {
-          return `❌ Incomplete configuration (missing: ${missingKeys.join(', ')})`;
-        }
-      })()
-    },
-
-    // Other Services
-    services: {
-      jwt_secret: process.env.JWT_SECRET ? '✅ Set' : '❌ Missing',
-      cors_origin: process.env.CORS_ORIGIN || '❌ Missing',
-      frontend_url: process.env.FRONTEND_URL || '❌ Missing',
-      sendgrid_api_key: process.env.SENDGRID_API_KEY ? '✅ Set' : '❌ Missing',
-      cloudinary: {
-        cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? '✅ Set' : '❌ Missing',
-        api_key: process.env.CLOUDINARY_API_KEY ? '✅ Set' : '❌ Missing',
-        api_secret: process.env.CLOUDINARY_API_SECRET ? '✅ Set' : '❌ Missing'
-      },
-      redis_url: process.env.REDIS_URL ? '✅ Set' : '❌ Missing',
-      openai_api_key: process.env.OPENAI_API_KEY ? '✅ Set' : '❌ Missing'
-    }
-  };
-
-  res.json(envCheck);
-});
+// Environment variables check endpoint (for debugging) - temporarily disabled due to TypeScript issues
+// app.get('/env-check', (req, res) => {
+//   // Only allow with special header for security
+//   const hasDebugHeader = req.headers['x-debug-token'] === 'check-env-vars-2024';
+//   if (!hasDebugHeader) {
+//     return res.status(403).json({ error: 'Environment check requires debug token' });
+//   }
+//   res.json({ message: 'Environment check endpoint temporarily disabled' });
+// });
 
 // Development endpoint to clear rate limits
 if (process.env.NODE_ENV !== 'production') {
-  app.post('/dev/clear-rate-limits', (req: Request, res: Response) => {
+  app.post('/dev/clear-rate-limits', (req, res) => {
     clearRateLimitStore();
     res.status(200).json({
       message: 'Rate limit store cleared successfully',
