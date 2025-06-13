@@ -85,7 +85,7 @@ app.get('/health', (req, res) => {
 });
 
 // Environment variables check endpoint (for debugging)
-app.get('/env-check', (req, res) => {
+app.get('/env-check', (req: Request, res: Response) => {
   // Only allow with special header for security
   const hasDebugHeader = req.headers['x-debug-token'] === 'check-env-vars-2024';
 
@@ -176,7 +176,7 @@ app.get('/env-check', (req, res) => {
 
 // Development endpoint to clear rate limits
 if (process.env.NODE_ENV !== 'production') {
-  app.post('/dev/clear-rate-limits', (req, res) => {
+  app.post('/dev/clear-rate-limits', (req: Request, res: Response) => {
     clearRateLimitStore();
     res.status(200).json({
       message: 'Rate limit store cleared successfully',

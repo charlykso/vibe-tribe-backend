@@ -333,25 +333,63 @@ router.get('/twitter/callback', asyncHandler(async (req, res) => {
     const stateData = oauthStates.get(state as string);
     if (!stateData) {
       console.error('Invalid or expired OAuth state:', state);
-      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=invalid_state`);
+      return res.json({
+        error: 'Access denied. No token provided.',
+        code: 'NO_TOKEN',
+        message: 'Invalid or expired OAuth state',
+        details: { state, availableStates: Array.from(oauthStates.keys()) }
+      });
     }
 
     // Verify platform matches
     if (stateData.platform !== 'twitter') {
       console.error('Platform mismatch in state:', stateData.platform);
-      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=platform_mismatch`);
+      return res.json({
+        error: 'Access denied. No token provided.',
+        code: 'NO_TOKEN',
+        message: 'Platform mismatch in state',
+        details: { expected: 'twitter', actual: stateData.platform }
+      });
     }
+
+    // Verify codeVerifier exists
+    if (!stateData.codeVerifier) {
+      console.error('Missing codeVerifier in state data');
+      return res.json({
+        error: 'Access denied. No token provided.',
+        code: 'NO_TOKEN',
+        message: 'Missing codeVerifier in state data',
+        details: { stateData }
+      });
+    }
+
+    console.log('🐦 Twitter OAuth state verified:', {
+      userId: stateData.userId,
+      organizationId: stateData.organizationId,
+      platform: stateData.platform,
+      hasCodeVerifier: !!stateData.codeVerifier
+    });
 
     // Clean up the state
     oauthStates.delete(state as string);
 
     // Get Twitter OAuth service and handle callback
     const twitterService = OAuthServiceFactory.getService('twitter');
+    console.log('🐦 Calling Twitter OAuth service with:', {
+      code: code ? 'present' : 'missing',
+      codeVerifier: stateData.codeVerifier ? 'present' : 'missing'
+    });
+
     const result = await (twitterService as any).handleCallback(code as string, stateData.codeVerifier);
 
     if (!result.success || !result.account) {
       console.error('Twitter OAuth failed:', result.error);
-      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=oauth_failed`);
+      return res.json({
+        error: 'Access denied. No token provided.',
+        code: 'NO_TOKEN',
+        message: 'Twitter OAuth failed',
+        details: { error: result.error, result }
+      });
     }
 
     const firestore = getFirestoreClient();

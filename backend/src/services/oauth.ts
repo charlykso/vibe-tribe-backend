@@ -139,6 +139,14 @@ export class TwitterOAuthService {
   // Handle OAuth callback and get user info
   async handleCallback(code: string, codeVerifier: string): Promise<OAuthResult> {
     try {
+      console.log('🐦 Twitter OAuth handleCallback called with:', {
+        code: code ? `${code.substring(0, 10)}...` : 'missing',
+        codeVerifier: codeVerifier ? `${codeVerifier.substring(0, 10)}...` : 'missing',
+        redirectUri: this.config.redirectUri,
+        clientId: this.config.clientId ? `${this.config.clientId.substring(0, 10)}...` : 'missing',
+        clientSecret: this.config.clientSecret ? 'present' : 'missing'
+      });
+
       // Handle demo OAuth codes
       if (code.startsWith('demo_code_twitter_')) {
         const account: Partial<SocialAccount> = {
@@ -159,12 +167,27 @@ export class TwitterOAuthService {
         return { success: true, account };
       }
 
+      // Validate required parameters
+      if (!code) {
+        return { success: false, error: 'Authorization code is required' };
+      }
+      if (!codeVerifier) {
+        return { success: false, error: 'Code verifier is required for Twitter OAuth' };
+      }
+      if (!this.config.clientId || !this.config.clientSecret) {
+        return { success: false, error: 'Twitter OAuth credentials not configured' };
+      }
+
+      console.log('🐦 Attempting Twitter token exchange...');
+
       // Exchange code for tokens
       const { client: loggedClient, accessToken, refreshToken } = await this.client.loginWithOAuth2({
         code,
         codeVerifier,
         redirectUri: this.config.redirectUri,
       });
+
+      console.log('🐦 Twitter token exchange successful, getting user info...');
 
       // Get user information
       const { data: userObject } = await loggedClient.v2.me({
@@ -174,6 +197,12 @@ export class TwitterOAuthService {
       if (!userObject) {
         return { success: false, error: 'Failed to get user information from Twitter' };
       }
+
+      console.log('🐦 Twitter user info retrieved:', {
+        id: userObject.id,
+        username: userObject.username,
+        name: userObject.name
+      });
 
       const account: Partial<SocialAccount> = {
         platform: 'twitter',
@@ -194,6 +223,11 @@ export class TwitterOAuthService {
       return { success: true, account };
     } catch (error) {
       console.error('❌ Error handling Twitter OAuth callback:', error);
+      console.error('❌ Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : undefined
+      });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Twitter OAuth failed'
