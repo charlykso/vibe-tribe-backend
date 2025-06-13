@@ -8,8 +8,8 @@ import { SocialAccount } from '../types/database.js';
 
 const router = Router();
 
-// Apply authentication to all routes
-router.use(authMiddleware);
+// Note: Authentication middleware is applied per route, not globally
+// Callback routes should NOT require authentication as they're called by external services
 
 // Validation schemas
 const initiateOAuthSchema = z.object({
@@ -129,8 +129,8 @@ setInterval(async () => {
 }, 5 * 60 * 1000); // Clean every 5 minutes
 
 // POST /api/v1/oauth/initiate
-// Initiate OAuth flow for a platform
-router.post('/initiate', asyncHandler(async (req: AuthenticatedRequest, res) => {
+// Initiate OAuth flow for a platform (requires authentication)
+router.post('/initiate', authMiddleware, asyncHandler(async (req: AuthenticatedRequest, res) => {
   const validation = initiateOAuthSchema.safeParse(req.body);
 
   if (!validation.success) {
@@ -185,8 +185,8 @@ router.post('/initiate', asyncHandler(async (req: AuthenticatedRequest, res) => 
 }));
 
 // POST /api/v1/oauth/callback
-// Handle OAuth callback and save account
-router.post('/callback', asyncHandler(async (req: AuthenticatedRequest, res) => {
+// Handle OAuth callback and save account (requires authentication)
+router.post('/callback', authMiddleware, asyncHandler(async (req: AuthenticatedRequest, res) => {
   const validation = callbackSchema.safeParse(req.body);
 
   if (!validation.success) {
@@ -311,8 +311,8 @@ router.post('/callback', asyncHandler(async (req: AuthenticatedRequest, res) => 
 }));
 
 // GET /api/v1/oauth/status/:platform
-// Check OAuth status for a platform
-router.get('/status/:platform', asyncHandler(async (req: AuthenticatedRequest, res) => {
+// Check OAuth status for a platform (requires authentication)
+router.get('/status/:platform', authMiddleware, asyncHandler(async (req: AuthenticatedRequest, res) => {
   const platform = req.params.platform;
   const user = req.user!;
 
@@ -352,8 +352,8 @@ router.get('/status/:platform', asyncHandler(async (req: AuthenticatedRequest, r
 }));
 
 // DELETE /api/v1/oauth/disconnect/:accountId
-// Disconnect a social media account
-router.delete('/disconnect/:accountId', asyncHandler(async (req: AuthenticatedRequest, res) => {
+// Disconnect a social media account (requires authentication)
+router.delete('/disconnect/:accountId', authMiddleware, asyncHandler(async (req: AuthenticatedRequest, res) => {
   const accountId = req.params.accountId;
   const user = req.user!;
 
@@ -852,7 +852,7 @@ router.get('/linkedin/callback', asyncHandler(async (req, res) => {
   }
 }));
 
-// Debug endpoint to test OAuth service initialization
+// Debug endpoint to test OAuth service initialization (unprotected for debugging)
 router.get('/debug/credentials', (req, res) => {
   try {
     const twitterService = OAuthServiceFactory.getService('twitter');
