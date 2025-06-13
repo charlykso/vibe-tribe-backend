@@ -77,15 +77,45 @@ function generateFirebaseBase64() {
   console.log('🔥 Generating Firebase Service Account Base64...\n')
 
   // Get the private key and ensure it's properly formatted
-  let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
+  let privateKey = process.env.FIREBASE_PRIVATE_KEY || ''
 
   // Remove quotes if they exist and ensure proper newline characters
   if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
-    privateKey = privateKey.slice(1, -1);
+    privateKey = privateKey.slice(1, -1)
   }
 
   // Ensure the private key has proper line breaks (not literal \n)
-  privateKey = privateKey.replace(/\\n/g, '\n');
+  privateKey = privateKey.replace(/\\n/g, '\n')
+
+  // Ensure the private key ends with a newline after the END marker
+  if (privateKey && !privateKey.endsWith('\n')) {
+    privateKey += '\n'
+  }
+
+  // Validate the private key format
+  if (privateKey) {
+    const lines = privateKey.split('\n')
+    const hasBeginMarker = lines[0].includes('-----BEGIN PRIVATE KEY-----')
+    const hasEndMarker = lines.some((line) =>
+      line.includes('-----END PRIVATE KEY-----')
+    )
+
+    if (!hasBeginMarker) {
+      console.error('❌ Private key missing BEGIN marker')
+    }
+    if (!hasEndMarker) {
+      console.error('❌ Private key missing END marker')
+    }
+
+    console.log(`🔍 Private key validation:`)
+    console.log(`  - Has BEGIN marker: ${hasBeginMarker ? '✅' : '❌'}`)
+    console.log(`  - Has END marker: ${hasEndMarker ? '✅' : '❌'}`)
+    console.log(`  - Line count: ${lines.length}`)
+    console.log(`  - First line: "${lines[0]}"`)
+    console.log(
+      `  - Last non-empty line: "${lines.filter((l) => l.trim()).pop()}"`
+    )
+  }
 
   const serviceAccount = {
     type: 'service_account',

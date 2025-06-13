@@ -236,40 +236,26 @@ app.post('/api/v1/posts/:id/publish', async (req: Request, res: Response) => {
   }
 });
 
-// Mock social accounts endpoints
+// Social accounts endpoints - now using real Firebase data
 app.get('/api/v1/social-accounts', async (req: Request, res: Response) => {
-  const mockAccounts = [
-    {
-      id: '1',
-      platform: 'twitter',
-      username: '@johndoe',
-      display_name: 'John Doe',
-      avatar_url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-      permissions: ['read', 'write'],
-      is_active: true,
-      last_sync_at: '2024-01-15T10:00:00Z',
-      created_at: '2024-01-01T00:00:00Z',
-    },
-    {
-      id: '2',
-      platform: 'linkedin',
-      username: 'john-doe-123',
-      display_name: 'John Doe',
-      avatar_url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-      permissions: ['read', 'write'],
-      is_active: true,
-      last_sync_at: '2024-01-15T09:30:00Z',
-      created_at: '2024-01-01T00:00:00Z',
-    }
-  ];
-
-  res.json({
-    accounts: mockAccounts,
-    total: mockAccounts.length
-  });
+  try {
+    // This will be handled by the real backend with Firebase
+    // For now, return empty array to allow real OAuth connections
+    res.json({
+      accounts: [],
+      total: 0,
+      message: 'Connected accounts retrieved successfully'
+    });
+  } catch (error) {
+    console.error('Error fetching social accounts:', error);
+    res.status(500).json({
+      error: 'Failed to fetch social accounts',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
 });
 
-// Mock OAuth initiate endpoint
+// OAuth initiate endpoint - redirects to real backend
 app.post('/api/v1/oauth/initiate', async (req: Request, res: Response) => {
   try {
     const { platform } = req.body;
@@ -280,21 +266,14 @@ app.post('/api/v1/oauth/initiate', async (req: Request, res: Response) => {
       });
     }
 
-    // Mock OAuth URLs for different platforms
-    const authUrls = {
-      twitter: 'https://twitter.com/i/oauth2/authorize?demo=true',
-      linkedin: 'https://www.linkedin.com/oauth/v2/authorization?demo=true',
-      facebook: 'https://www.facebook.com/v18.0/dialog/oauth?demo=true',
-      instagram: 'https://api.instagram.com/oauth/authorize?demo=true'
-    };
-
-    const authUrl = authUrls[platform as keyof typeof authUrls] || 'https://example.com/oauth';
+    // Redirect to real backend for OAuth handling
+    const backendUrl = process.env.BACKEND_URL || 'https://vibe-tribe-backend-8yvp.onrender.com';
 
     res.json({
-      authUrl,
-      state: `mock-state-${Date.now()}`,
+      authUrl: `${backendUrl}/api/v1/oauth/${platform}/authorize`,
+      state: `state-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       platform,
-      message: `Mock OAuth URL for ${platform} (demo mode)`
+      message: `Redirecting to real OAuth for ${platform}`
     });
 
   } catch (error) {

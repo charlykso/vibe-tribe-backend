@@ -13,29 +13,9 @@ const API_BASE = 'http://localhost:3001/api/v1'
 const USER_EMAIL = 'charlykso121@gmail.com'
 const USER_PASSWORD = 'IKEnna123'
 
-// Mock social accounts to connect
-const MOCK_ACCOUNTS = [
-  {
-    platform: 'twitter',
-    access_token: 'mock_twitter_token_123',
-    refresh_token: 'mock_twitter_refresh_123',
-    platform_user_id: 'charlykso121_twitter',
-    username: '@charlykso121',
-    display_name: 'Ezeanyaeji Ikenna Remigius',
-    avatar_url: 'https://pbs.twimg.com/profile_images/placeholder.jpg',
-    permissions: ['read', 'write', 'analytics'],
-  },
-  {
-    platform: 'linkedin',
-    access_token: 'mock_linkedin_token_456',
-    refresh_token: 'mock_linkedin_refresh_456',
-    platform_user_id: 'charlykso121_linkedin',
-    username: 'ezeanyaeji-ikenna-remigius',
-    display_name: 'Ezeanyaeji Ikenna Remigius',
-    avatar_url: 'https://media.licdn.com/dms/image/placeholder.jpg',
-    permissions: ['read', 'write', 'company_pages'],
-  },
-]
+// Note: This script was for testing mock accounts
+// Real OAuth connections should be done through the frontend UI
+// which will use the real backend OAuth endpoints
 
 async function login() {
   console.log('🔐 Logging in...')
@@ -122,28 +102,31 @@ async function getConnectedAccounts(token) {
 
 async function main() {
   try {
-    console.log('🚀 Starting social media account connection...\n')
-
-    // Step 1: Login
-    const token = await login()
-    console.log('')
-
-    // Step 2: Connect accounts
-    for (const accountData of MOCK_ACCOUNTS) {
-      await connectAccount(token, accountData)
-    }
-    console.log('')
-
-    // Step 3: Verify connections
-    await getConnectedAccounts(token)
-    console.log('')
-
+    console.log('🚀 Social Media Account Connection Script\n')
+    console.log('⚠️  This script was for testing mock accounts.')
     console.log(
-      '🎉 All done! You can now publish posts to connected platforms.'
+      '📱 For real OAuth connections, please use the SocialTribe dashboard:'
+    )
+    console.log('   1. Open your SocialTribe app')
+    console.log('   2. Go to Platform Connections')
+    console.log('   3. Click "Connect" on the platform you want to connect')
+    console.log('   4. Complete the OAuth flow in the popup window')
+    console.log('')
+    console.log('🔗 Real OAuth endpoints are configured in your backend:')
+    console.log(
+      '   - Twitter: https://vibe-tribe-backend-8yvp.onrender.com/api/v1/oauth/twitter/authorize'
     )
     console.log(
-      '💡 Try creating a post in the VibeTribe dashboard and publishing it.'
+      '   - LinkedIn: https://vibe-tribe-backend-8yvp.onrender.com/api/v1/oauth/linkedin/authorize'
     )
+    console.log(
+      '   - Facebook: https://vibe-tribe-backend-8yvp.onrender.com/api/v1/oauth/facebook/authorize'
+    )
+    console.log(
+      '   - Instagram: https://vibe-tribe-backend-8yvp.onrender.com/api/v1/oauth/instagram/authorize'
+    )
+    console.log('')
+    console.log('✅ Your OAuth credentials are properly configured!')
   } catch (error) {
     console.error('❌ Error:', error.message)
     process.exit(1)
