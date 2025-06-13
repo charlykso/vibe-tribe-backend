@@ -36,34 +36,65 @@ interface OAuthState {
 
 // Store OAuth state in Firestore
 async function storeOAuthState(state: string, data: Omit<OAuthState, 'expiresAt'>): Promise<void> {
-  const firestore = getFirestoreClient();
-  const expiresAt = Date.now() + (10 * 60 * 1000); // 10 minutes from now
+  try {
+    const firestore = getFirestoreClient();
+    const expiresAt = Date.now() + (10 * 60 * 1000); // 10 minutes from now
 
-  await firestore.collection('oauth_states').doc(state).set({
-    ...data,
-    expiresAt
-  });
+    const stateData = {
+      ...data,
+      expiresAt
+    };
+
+    console.log('💾 Storing OAuth state:', {
+      state: state.substring(0, 20) + '...',
+      platform: data.platform,
+      userId: data.userId,
+      expiresAt: new Date(expiresAt).toISOString()
+    });
+
+    await firestore.collection('oauth_states').doc(state).set(stateData);
+    console.log('✅ OAuth state stored successfully');
+  } catch (error) {
+    console.error('❌ Error storing OAuth state:', error);
+    throw error;
+  }
 }
 
 // Retrieve OAuth state from Firestore
 async function getOAuthState(state: string): Promise<OAuthState | null> {
-  const firestore = getFirestoreClient();
-  const doc = await firestore.collection('oauth_states').doc(state).get();
+  try {
+    console.log('🔍 Looking up OAuth state:', state.substring(0, 20) + '...');
 
-  if (!doc.exists) {
+    const firestore = getFirestoreClient();
+    const doc = await firestore.collection('oauth_states').doc(state).get();
+
+    if (!doc.exists) {
+      console.log('❌ OAuth state not found in database');
+      return null;
+    }
+
+    const data = doc.data() as OAuthState;
+    console.log('✅ OAuth state found:', {
+      platform: data.platform,
+      userId: data.userId,
+      timestamp: new Date(data.timestamp).toISOString(),
+      expiresAt: new Date(data.expiresAt).toISOString(),
+      isExpired: Date.now() > data.expiresAt
+    });
+
+    // Check if expired
+    if (Date.now() > data.expiresAt) {
+      console.log('⏰ OAuth state expired, cleaning up');
+      // Clean up expired state
+      await firestore.collection('oauth_states').doc(state).delete();
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('❌ Error retrieving OAuth state:', error);
     return null;
   }
-
-  const data = doc.data() as OAuthState;
-
-  // Check if expired
-  if (Date.now() > data.expiresAt) {
-    // Clean up expired state
-    await firestore.collection('oauth_states').doc(state).delete();
-    return null;
-  }
-
-  return data;
 }
 
 // Delete OAuth state from Firestore

@@ -301,7 +301,8 @@ export const initializeCollections = async (): Promise<void> => {
       'users',
       'social_accounts',
       'posts',
-      'analytics'
+      'analytics',
+      'oauth_states'
     ];
 
     for (const collectionName of collections) {
