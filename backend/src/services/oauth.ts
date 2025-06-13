@@ -124,9 +124,38 @@ export class TwitterOAuthService {
   private client: TwitterApi;
 
   constructor() {
+    // Load raw credentials
+    const rawClientId = oauthCredentials.TWITTER_CLIENT_ID || '';
+    const rawClientSecret = oauthCredentials.TWITTER_CLIENT_SECRET || '';
+
+    // Check if credentials are Base64 encoded and decode them
+    let clientId = rawClientId;
+    let clientSecret = rawClientSecret;
+
+    // Detect and decode Base64 credentials
+    if (this.isBase64(rawClientId)) {
+      try {
+        const decoded = Buffer.from(rawClientId, 'base64').toString('utf8');
+        console.log('🔓 Decoded Base64 Twitter Client ID:', decoded);
+        clientId = decoded;
+      } catch (error) {
+        console.error('❌ Failed to decode Base64 Client ID:', error);
+      }
+    }
+
+    if (this.isBase64(rawClientSecret)) {
+      try {
+        const decoded = Buffer.from(rawClientSecret, 'base64').toString('utf8');
+        console.log('🔓 Decoded Base64 Twitter Client Secret (first 20 chars):', decoded.substring(0, 20) + '...');
+        clientSecret = decoded;
+      } catch (error) {
+        console.error('❌ Failed to decode Base64 Client Secret:', error);
+      }
+    }
+
     this.config = {
-      clientId: oauthCredentials.TWITTER_CLIENT_ID || '',
-      clientSecret: oauthCredentials.TWITTER_CLIENT_SECRET || '',
+      clientId,
+      clientSecret,
       redirectUri: oauthCredentials.TWITTER_REDIRECT_URI || ''
     };
 
@@ -144,11 +173,23 @@ export class TwitterOAuthService {
       console.log('✅ Twitter API client initialized with credentials:', {
         clientId: this.config.clientId ? `${this.config.clientId.substring(0, 10)}...` : 'missing',
         clientSecret: this.config.clientSecret ? 'present' : 'missing',
-        redirectUri: this.config.redirectUri
+        redirectUri: this.config.redirectUri,
+        wasBase64Decoded: {
+          clientId: this.isBase64(rawClientId),
+          clientSecret: this.isBase64(rawClientSecret)
+        }
       });
     } catch (error) {
       console.error('❌ Failed to initialize Twitter API client:', error);
       throw error;
+    }
+  }
+
+  private isBase64(str: string): boolean {
+    try {
+      return /^[A-Za-z0-9+/]+=*$/.test(str) && str.length > 10;
+    } catch {
+      return false;
     }
   }
 
