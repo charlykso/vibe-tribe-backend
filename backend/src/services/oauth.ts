@@ -56,9 +56,17 @@ function loadOAuthCredentials() {
   const oauthBase64 = process.env.OAUTH_CREDENTIALS_BASE64;
   if (oauthBase64) {
     try {
+      console.log('🔐 Found Base64 OAuth credentials, decoding...');
       const credentialsJson = Buffer.from(oauthBase64, 'base64').toString('utf8');
       const base64Credentials = JSON.parse(credentialsJson);
-      console.log('✅ Using Base64 encoded OAuth credentials');
+
+      console.log('✅ Successfully decoded Base64 OAuth credentials:', {
+        twitter: {
+          clientId: base64Credentials.TWITTER_CLIENT_ID ? `${base64Credentials.TWITTER_CLIENT_ID.substring(0, 10)}...` : 'missing',
+          clientSecret: base64Credentials.TWITTER_CLIENT_SECRET ? 'present' : 'missing',
+          redirectUri: base64Credentials.TWITTER_REDIRECT_URI || 'missing'
+        }
+      });
 
       // Merge Base64 credentials with any available individual credentials
       // Individual credentials take precedence over Base64 ones
@@ -71,8 +79,11 @@ function loadOAuthCredentials() {
 
       return mergedCredentials;
     } catch (error) {
-      console.error('❌ Failed to parse Base64 OAuth credentials:', error.message);
+      console.error('❌ Failed to parse Base64 OAuth credentials:', error instanceof Error ? error.message : 'Unknown error');
+      console.error('❌ Base64 content preview:', oauthBase64.substring(0, 50) + '...');
     }
+  } else {
+    console.log('❌ No OAUTH_CREDENTIALS_BASE64 environment variable found');
   }
 
   // If both methods fail, return individual credentials (even if incomplete)
@@ -132,6 +143,12 @@ export class TwitterOAuthService {
   // Generate OAuth URL for Twitter
   async generateAuthUrl(state: string): Promise<{ url: string; codeVerifier: string }> {
     try {
+      console.log('🐦 Generating Twitter OAuth URL with config:', {
+        clientId: this.config.clientId ? `${this.config.clientId.substring(0, 10)}...` : 'missing',
+        redirectUri: this.config.redirectUri,
+        state: state.substring(0, 20) + '...'
+      });
+
       // If using demo credentials, redirect to demo OAuth page
       if (this.config.clientId === 'demo_twitter_client_id') {
         const params = new URLSearchParams({
@@ -145,6 +162,11 @@ export class TwitterOAuthService {
         };
       }
 
+      // Validate credentials before generating URL
+      if (!this.config.clientId || !this.config.clientSecret) {
+        throw new Error('Twitter OAuth credentials not configured');
+      }
+
       const { url, codeVerifier, state: returnedState } = this.client.generateOAuth2AuthLink(
         this.config.redirectUri,
         {
@@ -153,10 +175,20 @@ export class TwitterOAuthService {
         }
       );
 
+      console.log('✅ Twitter OAuth URL generated successfully:', {
+        url: url.substring(0, 100) + '...',
+        codeVerifier: codeVerifier ? 'generated' : 'missing',
+        returnedState: returnedState === state ? 'matches' : 'mismatch'
+      });
+
       return { url, codeVerifier };
     } catch (error) {
       console.error('❌ Error generating Twitter auth URL:', error);
-      throw new Error('Failed to generate Twitter authorization URL');
+      console.error('❌ Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      throw new Error(`Failed to generate Twitter authorization URL: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
