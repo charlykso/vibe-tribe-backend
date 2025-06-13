@@ -134,10 +134,22 @@ export class TwitterOAuthService {
       console.warn('⚠️ Twitter OAuth credentials not configured');
     }
 
-    this.client = new TwitterApi({
-      clientId: this.config.clientId,
-      clientSecret: this.config.clientSecret,
-    });
+    // Initialize Twitter API client
+    try {
+      this.client = new TwitterApi({
+        clientId: this.config.clientId,
+        clientSecret: this.config.clientSecret,
+      });
+
+      console.log('✅ Twitter API client initialized with credentials:', {
+        clientId: this.config.clientId ? `${this.config.clientId.substring(0, 10)}...` : 'missing',
+        clientSecret: this.config.clientSecret ? 'present' : 'missing',
+        redirectUri: this.config.redirectUri
+      });
+    } catch (error) {
+      console.error('❌ Failed to initialize Twitter API client:', error);
+      throw error;
+    }
   }
 
   // Generate OAuth URL for Twitter
@@ -234,7 +246,13 @@ export class TwitterOAuthService {
         return { success: false, error: 'Twitter OAuth credentials not configured' };
       }
 
-      console.log('🐦 Attempting Twitter token exchange...');
+      console.log('🐦 Attempting Twitter token exchange with details:', {
+        code: code ? `${code.substring(0, 20)}...` : 'missing',
+        codeVerifier: codeVerifier ? `${codeVerifier.substring(0, 20)}...` : 'missing',
+        redirectUri: this.config.redirectUri,
+        clientId: this.config.clientId ? `${this.config.clientId.substring(0, 10)}...` : 'missing',
+        clientSecret: this.config.clientSecret ? 'present' : 'missing'
+      });
 
       // Exchange code for tokens
       const { client: loggedClient, accessToken, refreshToken } = await this.client.loginWithOAuth2({
@@ -243,7 +261,11 @@ export class TwitterOAuthService {
         redirectUri: this.config.redirectUri,
       });
 
-      console.log('🐦 Twitter token exchange successful, getting user info...');
+      console.log('🐦 Twitter token exchange successful:', {
+        accessToken: accessToken ? `${accessToken.substring(0, 20)}...` : 'missing',
+        refreshToken: refreshToken ? `${refreshToken.substring(0, 20)}...` : 'missing'
+      });
+      console.log('🐦 Getting user info...');
 
       // Get user information
       const { data: userObject } = await loggedClient.v2.me({
@@ -279,11 +301,33 @@ export class TwitterOAuthService {
       return { success: true, account };
     } catch (error) {
       console.error('❌ Error handling Twitter OAuth callback:', error);
-      console.error('❌ Error details:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-        name: error instanceof Error ? error.name : undefined
-      });
+
+      // Log detailed error information
+      if (error instanceof Error) {
+        console.error('❌ Error details:', {
+          message: error.message,
+          name: error.name,
+          stack: error.stack
+        });
+
+        // Check for specific Twitter API errors
+        if (error.message.includes('401')) {
+          console.error('❌ Twitter 401 Unauthorized - possible causes:');
+          console.error('  - Invalid client credentials');
+          console.error('  - Expired or invalid authorization code');
+          console.error('  - Incorrect redirect URI');
+          console.error('  - Code verifier mismatch');
+        }
+
+        // Log any additional error data
+        if ('data' in error) {
+          console.error('❌ Twitter API error data:', (error as any).data);
+        }
+        if ('response' in error) {
+          console.error('❌ Twitter API response:', (error as any).response);
+        }
+      }
+
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Twitter OAuth failed'
