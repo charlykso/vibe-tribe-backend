@@ -879,4 +879,76 @@ router.get('/debug/credentials', (req, res) => {
   }
 });
 
+// Debug endpoint to test Twitter OAuth URL generation
+router.get('/debug/twitter-url', async (req, res) => {
+  try {
+    const twitterService = OAuthServiceFactory.getService('twitter');
+    const testState = `debug_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    console.log('🐦 Debug: Testing Twitter OAuth URL generation...');
+    const result = await (twitterService as any).generateAuthUrl(testState);
+
+    res.json({
+      timestamp: new Date().toISOString(),
+      message: 'Twitter OAuth URL generated successfully',
+      state: testState,
+      authUrl: result.url,
+      codeVerifier: result.codeVerifier ? 'generated' : 'missing',
+      urlPreview: result.url.substring(0, 100) + '...'
+    });
+  } catch (error) {
+    console.error('❌ Debug: Twitter OAuth URL generation failed:', error);
+    res.status(500).json({
+      error: 'Twitter OAuth URL generation failed',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString(),
+      details: error instanceof Error ? {
+        name: error.name,
+        stack: error.stack
+      } : undefined
+    });
+  }
+});
+
+// Debug endpoint to check Twitter credentials format
+router.get('/debug/twitter-config', (req, res) => {
+  try {
+    const config = {
+      clientId: process.env.TWITTER_CLIENT_ID,
+      clientSecret: process.env.TWITTER_CLIENT_SECRET,
+      redirectUri: process.env.TWITTER_REDIRECT_URI
+    };
+
+    console.log('🐦 Debug: Twitter configuration check...');
+
+    res.json({
+      timestamp: new Date().toISOString(),
+      message: 'Twitter configuration loaded',
+      config: {
+        clientId: config.clientId ? {
+          present: true,
+          length: config.clientId.length,
+          preview: `${config.clientId.substring(0, 10)}...`,
+          format: config.clientId.includes(':') ? 'contains_colon' : 'no_colon',
+          isBase64Like: /^[A-Za-z0-9+/]+=*$/.test(config.clientId)
+        } : { present: false },
+        clientSecret: config.clientSecret ? {
+          present: true,
+          length: config.clientSecret.length,
+          preview: `${config.clientSecret.substring(0, 10)}...`,
+          isBase64Like: /^[A-Za-z0-9+/]+=*$/.test(config.clientSecret)
+        } : { present: false },
+        redirectUri: config.redirectUri || 'missing'
+      }
+    });
+  } catch (error) {
+    console.error('❌ Debug: Twitter config check failed:', error);
+    res.status(500).json({
+      error: 'Twitter config check failed',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 export default router;
