@@ -186,11 +186,8 @@ export class TwitterOAuthService {
   }
 
   private isBase64(str: string): boolean {
-    try {
-      return /^[A-Za-z0-9+/]+=*$/.test(str) && str.length > 10;
-    } catch {
-      return false;
-    }
+    // Disable Base64 decoding - credentials are already in correct format
+    return false;
   }
 
   // Generate OAuth URL for Twitter
