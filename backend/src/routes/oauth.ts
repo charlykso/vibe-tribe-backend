@@ -3,8 +3,11 @@ import { z } from 'zod';
 import { getFirestoreClient, getServerTimestamp } from '../services/database.js';
 import { asyncHandler, ValidationError, UnauthorizedError } from '../middleware/errorHandler.js';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth.js';
-import { OAuthServiceFactory } from '../services/oauth.js';
+import { OAuthServiceFactory, TokenRefreshScheduler } from '../services/oauth.js';
 import { SocialAccount } from '../types/database.js';
+import { redis, REDIS_PREFIX, getRedisKey, setWithExpiry, getAndParse, deleteKey } from '../services/redis.js';
+import { oauthSecurityMiddleware, auditOAuthEvent } from '../middleware/oauthSecurity.js';
+import { generateSecureState, validateSecureState } from '../services/oauthSecurity.js';
 
 const router = Router();
 
@@ -34,94 +37,92 @@ interface OAuthState {
   expiresAt: number;
 }
 
-// Store OAuth state in Firestore
+// Store OAuth state in Redis
 async function storeOAuthState(state: string, data: Omit<OAuthState, 'expiresAt'>): Promise<void> {
   try {
-    const firestore = getFirestoreClient();
     const expiresAt = Date.now() + (10 * 60 * 1000); // 10 minutes from now
-
     const stateData = {
       ...data,
       expiresAt
     };
 
-    console.log('💾 Storing OAuth state:', {
+    const key = getRedisKey(REDIS_PREFIX.OAUTH_STATE, state);
+    const expiresIn = 10 * 60; // 10 minutes in seconds
+
+    console.log('💾 Storing OAuth state in Redis:', {
       state: state.substring(0, 20) + '...',
       platform: data.platform,
       userId: data.userId,
       expiresAt: new Date(expiresAt).toISOString()
     });
 
-    await firestore.collection('oauth_states').doc(state).set(stateData);
-    console.log('✅ OAuth state stored successfully');
+    await setWithExpiry(key, stateData, expiresIn);
+    console.log('✅ OAuth state stored successfully in Redis');
   } catch (error) {
     console.error('❌ Error storing OAuth state:', error);
     throw error;
   }
 }
 
-// Retrieve OAuth state from Firestore
+// Retrieve OAuth state from Redis
 async function getOAuthState(state: string): Promise<OAuthState | null> {
   try {
-    console.log('🔍 Looking up OAuth state:', state.substring(0, 20) + '...');
+    console.log('🔍 Looking up OAuth state in Redis:', state.substring(0, 20) + '...');
 
-    const firestore = getFirestoreClient();
-    const doc = await firestore.collection('oauth_states').doc(state).get();
+    const key = getRedisKey(REDIS_PREFIX.OAUTH_STATE, state);
+    const stateData = await getAndParse<OAuthState>(key);
 
-    if (!doc.exists) {
-      console.log('❌ OAuth state not found in database');
+    if (!stateData) {
+      console.log('❌ OAuth state not found in Redis');
       return null;
     }
 
-    const data = doc.data() as OAuthState;
-    console.log('✅ OAuth state found:', {
-      platform: data.platform,
-      userId: data.userId,
-      timestamp: new Date(data.timestamp).toISOString(),
-      expiresAt: new Date(data.expiresAt).toISOString(),
-      isExpired: Date.now() > data.expiresAt
+    console.log('✅ OAuth state found in Redis:', {
+      platform: stateData.platform,
+      userId: stateData.userId,
+      timestamp: new Date(stateData.timestamp).toISOString(),
+      expiresAt: new Date(stateData.expiresAt).toISOString(),
+      isExpired: Date.now() > stateData.expiresAt
     });
 
     // Check if expired
-    if (Date.now() > data.expiresAt) {
+    if (Date.now() > stateData.expiresAt) {
       console.log('⏰ OAuth state expired, cleaning up');
       // Clean up expired state
-      await firestore.collection('oauth_states').doc(state).delete();
+      await deleteKey(key);
       return null;
     }
 
-    return data;
+    return stateData;
   } catch (error) {
     console.error('❌ Error retrieving OAuth state:', error);
     return null;
   }
 }
 
-// Delete OAuth state from Firestore
+// Delete OAuth state from Redis
 async function deleteOAuthState(state: string): Promise<void> {
-  const firestore = getFirestoreClient();
-  await firestore.collection('oauth_states').doc(state).delete();
+  const key = getRedisKey(REDIS_PREFIX.OAUTH_STATE, state);
+  await deleteKey(key);
 }
 
 // Clean up expired states (runs every 5 minutes)
 setInterval(async () => {
   try {
-    const firestore = getFirestoreClient();
+    const keys = await redis.keys(getRedisKey(REDIS_PREFIX.OAUTH_STATE, '*'));
     const now = Date.now();
+    let cleanedCount = 0;
 
-    const expiredStates = await firestore
-      .collection('oauth_states')
-      .where('expiresAt', '<', now)
-      .get();
+    for (const key of keys) {
+      const stateData = await getAndParse<OAuthState>(key);
+      if (stateData && now > stateData.expiresAt) {
+        await deleteKey(key);
+        cleanedCount++;
+      }
+    }
 
-    const batch = firestore.batch();
-    expiredStates.docs.forEach(doc => {
-      batch.delete(doc.ref);
-    });
-
-    if (!expiredStates.empty) {
-      await batch.commit();
-      console.log(`🧹 Cleaned up ${expiredStates.size} expired OAuth states`);
+    if (cleanedCount > 0) {
+      console.log(`🧹 Cleaned up ${cleanedCount} expired OAuth states from Redis`);
     }
   } catch (error) {
     console.error('❌ Error cleaning up OAuth states:', error);
@@ -130,191 +131,356 @@ setInterval(async () => {
 
 // POST /api/v1/oauth/initiate
 // Initiate OAuth flow for a platform (requires authentication)
-router.post('/initiate', authMiddleware, asyncHandler(async (req: AuthenticatedRequest, res) => {
-  const validation = initiateOAuthSchema.safeParse(req.body);
+router.post('/initiate', 
+  authMiddleware,
+  ...oauthSecurityMiddleware.initiate,
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const validation = initiateOAuthSchema.safeParse(req.body);
 
-  if (!validation.success) {
-    throw new ValidationError('Validation failed', validation.error.errors);
-  }
+    if (!validation.success) {
+      throw new ValidationError('Validation failed', validation.error.errors);
+    }    const { platform, returnUrl } = validation.data;
+    const user = req.user;
 
-  const { platform, returnUrl } = validation.data;
-  const user = req.user!;
-
-  if (!user.organization_id) {
-    throw new UnauthorizedError('User must belong to an organization');
-  }
-
-  try {
-    // Generate unique state parameter
-    const state = `${user.id}_${user.organization_id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    // Get OAuth service for platform
-    const oauthService = OAuthServiceFactory.getService(platform);
-    
-    let authUrl: string;
-    let codeVerifier: string | undefined;
-
-    if (platform === 'twitter') {
-      const result = await (oauthService as any).generateAuthUrl(state);
-      authUrl = result.url;
-      codeVerifier = result.codeVerifier;
-    } else {
-      authUrl = (oauthService as any).generateAuthUrl(state);
+    if (!user.organization_id) {
+      throw new UnauthorizedError('User must belong to an organization');
     }
 
-    // Store state information in Firestore
-    await storeOAuthState(state, {
-      userId: user.id,
-      organizationId: user.organization_id,
-      platform,
-      codeVerifier,
-      timestamp: Date.now()
-    });
+    try {
+      // Generate secure state parameter using enhanced security
+      const state = generateSecureState(user.id, user.organization_id);
+      
+      // Get OAuth service for platform
+      const oauthService = OAuthServiceFactory.getService(platform);
+      
+      let authUrl: string;
+      let codeVerifier: string | undefined;
 
-    res.json({
-      authUrl,
-      state,
-      platform,
-      message: `Redirect user to this URL to authorize ${platform} access`
-    });
+      if (platform === 'twitter') {
+        const result = await (oauthService as any).generateAuthUrl(state);
+        authUrl = result.url;
+        codeVerifier = result.codeVerifier;
+      } else {
+        authUrl = (oauthService as any).generateAuthUrl(state);
+      }
 
-  } catch (error) {
-    console.error(`❌ Error initiating ${platform} OAuth:`, error);
-    throw new ValidationError(`Failed to initiate ${platform} OAuth: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-}));
+      // Store state information in Redis with enhanced security
+      await storeOAuthState(state, {
+        userId: user.id,
+        organizationId: user.organization_id,
+        platform,
+        codeVerifier,
+        timestamp: Date.now()
+      });
+
+      // Audit log the OAuth initiation
+      await auditOAuthEvent({
+        userId: user.id,
+        organizationId: user.organization_id,        platform,
+        action: 'initiate',
+        success: true,
+        ipAddress: (req as any).oauthMetadata?.ipAddress ?? 'unknown',
+        userAgent: (req as any).oauthMetadata?.userAgent ?? 'unknown',
+        metadata: { returnUrl }
+      });
+
+      res.json({
+        authUrl,
+        state,
+        platform,
+        message: `Redirect user to this URL to authorize ${platform} access`
+      });
+
+    } catch (error) {
+      console.error(`❌ Error initiating ${platform} OAuth:`, error);
+      
+      // Audit log the error
+      await auditOAuthEvent({
+        userId: user.id,        organizationId: user.organization_id,
+        platform,
+        action: 'initiate',
+        success: false,
+        ipAddress: (req as any).oauthMetadata?.ipAddress ?? 'unknown',
+        userAgent: (req as any).oauthMetadata?.userAgent ?? 'unknown',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      
+      throw new ValidationError(`Failed to initiate ${platform} OAuth: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  })
+);
 
 // POST /api/v1/oauth/callback
 // Handle OAuth callback and save account (requires authentication)
-router.post('/callback', authMiddleware, asyncHandler(async (req: AuthenticatedRequest, res) => {
-  const validation = callbackSchema.safeParse(req.body);
+router.post('/callback',
+  authMiddleware,
+  ...oauthSecurityMiddleware.callback,
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const validation = callbackSchema.safeParse(req.body);
 
-  if (!validation.success) {
-    throw new ValidationError('Validation failed', validation.error.errors);
-  }
-
-  const { platform, code, state, codeVerifier } = validation.data;
-
-  // Verify state parameter
-  const stateData = await getOAuthState(state);
-  if (!stateData) {
-    throw new UnauthorizedError('Invalid or expired OAuth state');
-  }
-
-  // Verify the state belongs to the current user
-  if (stateData.userId !== req.user!.id || stateData.platform !== platform) {
-    throw new UnauthorizedError('OAuth state mismatch');
-  }
-
-  // Clean up the state
-  await deleteOAuthState(state);
-
-  try {
-    // Get OAuth service and handle callback
-    const oauthService = OAuthServiceFactory.getService(platform);
-    
-    let result;
-    if (platform === 'twitter' && codeVerifier) {
-      result = await (oauthService as any).handleCallback(code, codeVerifier);
-    } else {
-      result = await (oauthService as any).handleCallback(code);
+    if (!validation.success) {
+      throw new ValidationError('Validation failed', validation.error.errors);
     }
 
-    if (!result.success || !result.account) {
-      throw new ValidationError(`OAuth failed: ${result.error || 'Unknown error'}`);
-    }
+    const { platform, code, state, codeVerifier } = validation.data;
 
-    const firestore = getFirestoreClient();
-
-    // Check if account already exists
-    const existingAccountQuery = await firestore
-      .collection('social_accounts')
-      .where('platform', '==', platform)
-      .where('platform_user_id', '==', result.account.platform_user_id)
-      .where('organization_id', '==', stateData.organizationId)
-      .limit(1)
-      .get();
-
-    if (!existingAccountQuery.empty) {
-      // Update existing account
-      const existingDoc = existingAccountQuery.docs[0];
-      await firestore.collection('social_accounts').doc(existingDoc.id).update({
-        access_token: result.account.access_token,
-        refresh_token: result.account.refresh_token,
-        username: result.account.username,
-        display_name: result.account.display_name,
-        avatar_url: result.account.avatar_url,
-        permissions: result.account.permissions,
-        metadata: result.account.metadata,
-        is_active: true,
-        last_sync_at: getServerTimestamp(),
-        updated_at: getServerTimestamp()
+    // Enhanced state validation using secure methods
+    if (!validateSecureState(state, req.user.id, req.user.organization_id)) {
+      await auditOAuthEvent({
+        userId: req.user.id,
+        organizationId: req.user.organization_id,
+        platform,
+        action: 'callback',
+        success: false,
+        ipAddress: (req as any).oauthMetadata?.ipAddress ?? 'unknown',
+        userAgent: (req as any).oauthMetadata?.userAgent ?? 'unknown',
+        error: 'Invalid OAuth state parameter'
       });
+      throw new UnauthorizedError('Invalid or expired OAuth state');
+    }
 
-      const updatedAccount = {
-        id: existingDoc.id,
-        ...existingDoc.data(),
-        ...result.account
-      };
+    // Verify state parameter exists in Redis
+    const stateData = await getOAuthState(state);
+    if (!stateData) {
+      throw new UnauthorizedError('Invalid or expired OAuth state');
+    }
 
-      res.json({
-        message: `${platform} account updated successfully`,
-        account: {
-          id: updatedAccount.id,
-          platform: updatedAccount.platform,
-          username: updatedAccount.username,
-          display_name: updatedAccount.display_name,
-          avatar_url: updatedAccount.avatar_url,
-          is_active: updatedAccount.is_active
+    // Verify the state belongs to the current user
+    if (stateData.userId !== req.user.id || stateData.platform !== platform) {
+      throw new UnauthorizedError('OAuth state mismatch');
+    }
+
+    // Clean up the state
+    await deleteOAuthState(state);
+
+    try {
+      // Get OAuth service and handle callback
+      const oauthService = OAuthServiceFactory.getService(platform);
+      
+      let result;
+      if (platform === 'twitter' && codeVerifier) {
+        result = await (oauthService as any).handleCallback(code, codeVerifier);
+      } else {
+        result = await (oauthService as any).handleCallback(code);
+      }
+
+      if (!result.success || !result.account) {
+        throw new ValidationError(`OAuth failed: ${result.error ?? 'Unknown error'}`);
+      }
+
+      const firestore = getFirestoreClient();
+
+      // Check if account already exists
+      const existingAccountQuery = await firestore
+        .collection('social_accounts')
+        .where('platform', '==', platform)
+        .where('platform_user_id', '==', result.account.platform_user_id)
+        .where('organization_id', '==', stateData.organizationId)
+        .limit(1)
+        .get();
+
+      let accountData: Partial<SocialAccount>;
+      let accountId: string;
+
+      if (!existingAccountQuery.empty) {
+        // Update existing account
+        const existingAccount = existingAccountQuery.docs[0];
+        accountId = existingAccount.id;
+        accountData = {
+          ...existingAccount.data(),
+          ...result.account,
+          tokenUpdatedAt: getServerTimestamp(),
+          expiresAt: Date.now() + (result.account.refreshToken ? 60 * 24 * 60 * 60 * 1000 : 60 * 60 * 1000)
+        };
+        await existingAccount.ref.update(accountData);
+      } else {
+        // Create new account
+        accountData = {
+          ...result.account,
+          createdAt: getServerTimestamp(),
+          tokenUpdatedAt: getServerTimestamp(),
+          expiresAt: Date.now() + (result.account.refreshToken ? 60 * 24 * 60 * 60 * 1000 : 60 * 60 * 1000)
+        };
+        const newAccount = await firestore.collection('social_accounts').add(accountData);
+        accountId = newAccount.id;
+      }
+
+      // Schedule token refresh
+      if (accountData.refresh_token) {
+        let expiresAt: number;
+        if (accountData.token_expires_at) {
+          if (typeof accountData.token_expires_at === 'string') {
+            expiresAt = new Date(accountData.token_expires_at).getTime();
+          } else {
+            expiresAt = accountData.token_expires_at.toMillis();
+          }
+        } else {
+          expiresAt = Date.now() + 60 * 60 * 1000;
+        }
+          
+        await TokenRefreshScheduler.getInstance().scheduleTokenRefresh(
+          accountId,
+          platform,
+          expiresAt
+        );
+      }
+
+      // Audit log successful callback
+      await auditOAuthEvent({
+        userId: req.user.id,
+        organizationId: req.user.organization_id,
+        platform,
+        action: 'callback',
+        success: true,
+        ipAddress: (req as any).oauthMetadata?.ipAddress ?? 'unknown',
+        userAgent: (req as any).oauthMetadata?.userAgent ?? 'unknown',
+        metadata: { 
+          accountId, 
+          username: result.account.username,
+          platformUserId: result.account.platform_user_id
         }
       });
-    } else {
-      // Create new account
-      const accountRef = firestore.collection('social_accounts').doc();
-      const newAccount = {
-        user_id: stateData.userId,
-        organization_id: stateData.organizationId,
-        platform: result.account.platform,
-        platform_user_id: result.account.platform_user_id,
-        username: result.account.username,
-        display_name: result.account.display_name,
-        avatar_url: result.account.avatar_url,
-        access_token: result.account.access_token,
-        refresh_token: result.account.refresh_token,
-        permissions: result.account.permissions || [],
-        metadata: result.account.metadata || {},
-        is_active: true,
-        created_at: getServerTimestamp(),
-        updated_at: getServerTimestamp(),
-        last_sync_at: getServerTimestamp()
-      };
 
-      await accountRef.set(newAccount);
-
-      res.status(201).json({
+      // Return success response
+      res.json({
+        success: true,
         message: `${platform} account connected successfully`,
         account: {
-          id: accountRef.id,
-          platform: newAccount.platform,
-          username: newAccount.username,
-          display_name: newAccount.display_name,
-          avatar_url: newAccount.avatar_url,
-          is_active: newAccount.is_active
+          id: accountId,
+          ...accountData
         }
       });
+
+    } catch (error) {
+      console.error(`❌ Error handling ${platform} OAuth callback:`, error);
+      
+      // Audit log the error
+      await auditOAuthEvent({
+        userId: req.user.id,
+        organizationId: req.user.organization_id,
+        platform,
+        action: 'callback',
+        success: false,
+        ipAddress: (req as any).oauthMetadata?.ipAddress ?? 'unknown',
+        userAgent: (req as any).oauthMetadata?.userAgent ?? 'unknown',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      
+      throw new ValidationError(`Failed to connect ${platform} account: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  })
+);
+
+// POST /api/v1/oauth/refresh
+// Refresh OAuth token (requires authentication)
+router.post('/refresh',
+  authMiddleware,
+  ...oauthSecurityMiddleware.refresh,  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const { accountId, platform } = req.body;
+    const user = req.user;
+
+    if (!accountId || !platform) {
+      throw new ValidationError('Account ID and platform are required');
     }
 
-  } catch (error) {
-    console.error(`❌ Error handling ${platform} OAuth callback:`, error);
-    throw new ValidationError(`Failed to connect ${platform} account: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-}));
+    if (!['twitter', 'linkedin', 'facebook', 'instagram'].includes(platform)) {
+      throw new ValidationError('Invalid platform');
+    }
+
+    try {
+      const firestore = getFirestoreClient();
+      
+      // Get the social account
+      const accountDoc = await firestore.collection('social_accounts').doc(accountId).get();
+      
+      if (!accountDoc.exists) {
+        throw new ValidationError('Account not found');
+      }
+
+      const accountData = accountDoc.data() as SocialAccount;
+      
+      // Verify account belongs to user's organization
+      if (accountData.organization_id !== user.organization_id) {
+        throw new UnauthorizedError('Account does not belong to your organization');
+      }
+
+      // Verify platform matches
+      if (accountData.platform !== platform) {
+        throw new ValidationError('Platform mismatch');
+      }
+
+      if (!accountData.refresh_token) {
+        throw new ValidationError('No refresh token available for this account');
+      }
+
+      // Get OAuth service and refresh token
+      const oauthService = OAuthServiceFactory.getService(platform);
+      const refreshResult = await (oauthService as any).refreshAccessToken(accountData.refresh_token);
+
+      if (!refreshResult) {
+        throw new ValidationError('Failed to refresh token');
+      }
+
+      // Update account with new tokens
+      const updatedData = {
+        access_token: refreshResult.accessToken,
+        refresh_token: refreshResult.refreshToken ?? accountData.refresh_token,
+        tokenUpdatedAt: getServerTimestamp(),
+        expiresAt: Date.now() + (3600 * 1000) // 1 hour from now
+      };
+
+      await accountDoc.ref.update(updatedData);
+
+      // Schedule next token refresh
+      await TokenRefreshScheduler.getInstance().scheduleTokenRefresh(
+        accountId,
+        platform,
+        updatedData.expiresAt
+      );
+
+      // Audit log successful refresh
+      await auditOAuthEvent({
+        userId: user.id,
+        organizationId: user.organization_id,
+        platform,
+        action: 'refresh',
+        success: true,
+        ipAddress: (req as any).oauthMetadata?.ipAddress ?? 'unknown',
+        userAgent: (req as any).oauthMetadata?.userAgent ?? 'unknown',
+        metadata: { accountId }
+      });
+
+      res.json({
+        success: true,
+        message: 'Token refreshed successfully',
+        expiresAt: updatedData.expiresAt
+      });
+
+    } catch (error) {
+      console.error(`❌ Error refreshing ${platform} token:`, error);
+      
+      // Audit log the error
+      await auditOAuthEvent({
+        userId: user.id,
+        organizationId: user.organization_id,
+        platform,
+        action: 'refresh',
+        success: false,
+        ipAddress: (req as any).oauthMetadata?.ipAddress ?? 'unknown',
+        userAgent: (req as any).oauthMetadata?.userAgent ?? 'unknown',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      
+      throw new ValidationError(`Failed to refresh ${platform} token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  })
+);
 
 // GET /api/v1/oauth/status/:platform
 // Check OAuth status for a platform (requires authentication)
 router.get('/status/:platform', authMiddleware, asyncHandler(async (req: AuthenticatedRequest, res) => {
   const platform = req.params.platform;
-  const user = req.user!;
+  const user = req.user;
 
   if (!['twitter', 'linkedin', 'facebook', 'instagram'].includes(platform)) {
     throw new ValidationError('Invalid platform');
@@ -355,7 +521,7 @@ router.get('/status/:platform', authMiddleware, asyncHandler(async (req: Authent
 // Disconnect a social media account (requires authentication)
 router.delete('/disconnect/:accountId', authMiddleware, asyncHandler(async (req: AuthenticatedRequest, res) => {
   const accountId = req.params.accountId;
-  const user = req.user!;
+  const user = req.user;
 
   if (!user.organization_id) {
     throw new UnauthorizedError('User must belong to an organization');
@@ -398,8 +564,8 @@ router.get('/twitter/callback', asyncHandler(async (req, res) => {
 
   console.log('🐦 Twitter OAuth callback received:', {
     code: code ? 'present' : 'missing',
-    state: state ? state : 'missing',
-    error: error || 'none',
+    state: state ?? 'missing',
+    error: error ?? 'none',
     query: req.query
   });
 
@@ -556,8 +722,8 @@ router.get('/facebook/callback', asyncHandler(async (req, res) => {
 
   console.log('📘 Facebook OAuth callback received:', {
     code: code ? 'present' : 'missing',
-    state: state ? state : 'missing',
-    error: error || 'none',
+    state: state ?? 'missing',
+    error: error ?? 'none',
     query: req.query
   });
 
@@ -657,8 +823,8 @@ router.get('/instagram/callback', asyncHandler(async (req, res) => {
 
   console.log('📷 Instagram OAuth callback received:', {
     code: code ? 'present' : 'missing',
-    state: state ? state : 'missing',
-    error: error || 'none',
+    state: state ?? 'missing',
+    error: error ?? 'none',
     query: req.query
   });
 
@@ -758,8 +924,8 @@ router.get('/linkedin/callback', asyncHandler(async (req, res) => {
 
   console.log('🔗 LinkedIn OAuth callback received:', {
     code: code ? 'present' : 'missing',
-    state: state ? state : 'missing',
-    error: error || 'none',
+    state: state ?? 'missing',
+    error: error ?? 'none',
     query: req.query
   });
 
@@ -883,7 +1049,7 @@ router.get('/debug/credentials', (req, res) => {
 router.get('/debug/twitter-url', async (req, res) => {
   try {
     const twitterService = OAuthServiceFactory.getService('twitter');
-    const testState = `debug_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const testState = `debug_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
     console.log('🐦 Debug: Testing Twitter OAuth URL generation...');
     const result = await (twitterService as any).generateAuthUrl(testState);
@@ -942,8 +1108,7 @@ router.get('/debug/twitter-config', (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ Debug: Twitter config check failed:', error);
-    res.status(500).json({
+    console.error('❌ Debug: Twitter config check failed:', error);    res.status(500).json({
       error: 'Twitter config check failed',
       message: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()

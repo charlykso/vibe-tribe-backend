@@ -1,6 +1,17 @@
 import { TwitterApi } from 'twitter-api-v2';
 import { getFirestoreClient, getServerTimestamp } from './database.js';
 import { SocialAccount } from '../types/database.js';
+import crypto from 'crypto';
+import Redis from 'ioredis';
+import {
+  validateEnvironment,
+  encryptTokenData,
+  decryptTokenData,
+  auditLog
+} from './oauthSecurity.js';
+
+// Redis client for caching
+const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 
 // OAuth Configuration
 interface OAuthConfig {
@@ -14,6 +25,19 @@ interface OAuthResult {
   account?: Partial<SocialAccount>;
   error?: string;
 }
+
+interface TokenStorage {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number;
+}
+
+// Redis key prefixes
+const REDIS_PREFIX = {
+  OAUTH_STATE: 'oauth:state:',
+  OAUTH_TOKENS: 'oauth:tokens:',
+  RATE_LIMIT: 'rate:limit:'
+};
 
 // Load OAuth credentials from Base64 or individual environment variables
 function loadOAuthCredentials() {
@@ -94,6 +118,9 @@ function loadOAuthCredentials() {
 // Load credentials once at module level
 const oauthCredentials = loadOAuthCredentials();
 
+// Validate environment configuration
+validateEnvironment();
+
 // Debug: Log loaded credentials (without secrets)
 console.log('🔐 OAuth Credentials Status:', {
   twitter: {
@@ -122,6 +149,7 @@ console.log('🔐 OAuth Credentials Status:', {
 export class TwitterOAuthService {
   private config: OAuthConfig;
   private client: TwitterApi;
+  private db = getFirestoreClient();
 
   constructor() {
     // Load raw credentials
@@ -186,8 +214,172 @@ export class TwitterOAuthService {
   }
 
   private isBase64(str: string): boolean {
-    // Disable Base64 decoding - credentials are already in correct format
-    return false;
+    try {
+      // Check if string is valid Base64
+      const base64Regex = /^[A-Za-z0-9+/=]+$/;
+      if (!base64Regex.test(str)) return false;
+      
+      // Try to decode and re-encode to verify
+      const decoded = Buffer.from(str, 'base64').toString('utf8');
+      const reEncoded = Buffer.from(decoded).toString('base64');
+      return reEncoded === str;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  private validateState(state: string, returnedState: string): boolean {
+    if (!state || !returnedState) {
+      console.warn('❌ State validation failed: Missing state or returned state');
+      return false;
+    }
+    const isValid = state === returnedState;
+    if (!isValid) {
+      console.warn('❌ State validation failed: State mismatch', {
+        provided: state.substring(0, 10) + '...',
+        returned: returnedState.substring(0, 10) + '...'
+      });
+    }
+    return isValid;
+  }  private async encryptTokens(tokens: TokenStorage): Promise<string> {
+    try {
+      const secureTokenData = {
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        metadata: {
+          platform: 'unknown', // This should be set by the calling service
+          userId: 'unknown',
+          scopes: [],
+          issuedAt: Date.now(),
+          expiresAt: tokens.expiresAt,
+          lastUsed: Date.now(),
+          usageCount: 0
+        }
+      };
+      return encryptTokenData(secureTokenData);
+    } catch (error) {
+      console.error('❌ Failed to encrypt tokens:', error);
+      await auditLog('error', '', '', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        action: 'token_encryption_failed'
+      });
+      throw new Error('Token encryption failed');
+    }
+  }
+
+  private async decryptTokens(encryptedData: string): Promise<TokenStorage> {
+    try {
+      const secureTokenData = decryptTokenData(encryptedData);
+      return {
+        accessToken: secureTokenData.accessToken,
+        refreshToken: secureTokenData.refreshToken || '',
+        expiresAt: secureTokenData.metadata.expiresAt
+      };
+    } catch (error) {
+      console.error('❌ Failed to decrypt tokens:', error);
+      await auditLog('error', '', '', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        action: 'token_decryption_failed'
+      });
+      throw new Error('Token decryption failed');
+    }
+  }
+
+  private async storeOAuthState(state: string, data: any): Promise<void> {
+    try {
+      const key = `${REDIS_PREFIX.OAUTH_STATE}${state}`;
+      const expiresIn = 10 * 60; // 10 minutes
+      
+      await redis.setex(key, expiresIn, JSON.stringify(data));
+      console.log('✅ OAuth state stored in Redis:', {
+        state: state.substring(0, 10) + '...',
+        expiresIn
+      });
+    } catch (error) {
+      console.error('❌ Failed to store OAuth state in Redis:', error);
+      throw error;
+    }
+  }
+
+  private async getOAuthState(state: string): Promise<any | null> {
+    try {
+      const key = `${REDIS_PREFIX.OAUTH_STATE}${state}`;
+      const data = await redis.get(key);
+      
+      if (!data) {
+        console.log('❌ OAuth state not found in Redis:', state.substring(0, 10) + '...');
+        return null;
+      }
+
+      console.log('✅ OAuth state retrieved from Redis:', state.substring(0, 10) + '...');
+      return JSON.parse(data);
+    } catch (error) {
+      console.error('❌ Failed to get OAuth state from Redis:', error);
+      return null;
+    }
+  }
+
+  private async deleteOAuthState(state: string): Promise<void> {
+    try {
+      const key = `${REDIS_PREFIX.OAUTH_STATE}${state}`;
+      await redis.del(key);
+      console.log('✅ OAuth state deleted from Redis:', state.substring(0, 10) + '...');
+    } catch (error) {
+      console.error('❌ Failed to delete OAuth state from Redis:', error);
+    }
+  }
+
+  private async storeTokens(userId: string, tokens: TokenStorage): Promise<void> {
+    try {
+      const key = `${REDIS_PREFIX.OAUTH_TOKENS}${userId}`;
+      const encryptedTokens = await this.encryptTokens(tokens);
+      
+      // Store in Redis with expiration
+      const expiresIn = Math.floor((tokens.expiresAt - Date.now()) / 1000);
+      await redis.setex(key, expiresIn, encryptedTokens);
+      
+      // Also store in Firestore for persistence
+      await this.db.collection('users').doc(userId).update({
+        oauthTokens: encryptedTokens,
+        updatedAt: getServerTimestamp()
+      });
+
+      console.log('✅ Tokens stored in Redis and Firestore for user:', userId.substring(0, 10) + '...');
+    } catch (error) {
+      console.error('❌ Failed to store tokens:', error);
+      throw error;
+    }
+  }
+
+  private async getStoredTokens(userId: string): Promise<TokenStorage | null> {
+    try {
+      const key = `${REDIS_PREFIX.OAUTH_TOKENS}${userId}`;
+      
+      // Try Redis first
+      let encryptedTokens = await redis.get(key);
+      
+      // If not in Redis, try Firestore
+      if (!encryptedTokens) {
+        const doc = await this.db.collection('users').doc(userId).get();
+        const data = doc.data();
+        encryptedTokens = data?.oauthTokens;
+        
+        // If found in Firestore, store in Redis
+        if (encryptedTokens) {
+          const tokens = await this.decryptTokens(encryptedTokens);
+          await this.storeTokens(userId, tokens);
+        }
+      }
+      
+      if (!encryptedTokens) {
+        return null;
+      }
+
+      return await this.decryptTokens(encryptedTokens);
+    } catch (error) {
+      console.error('❌ Failed to retrieve tokens:', error);
+      return null;
+    }
   }
 
   // Generate OAuth URL for Twitter
@@ -224,6 +416,11 @@ export class TwitterOAuthService {
           state
         }
       );
+
+      // Validate state
+      if (!this.validateState(state, returnedState)) {
+        throw new Error('State validation failed');
+      }
 
       console.log('✅ Twitter OAuth URL generated successfully:', {
         url: url.substring(0, 100) + '...',
@@ -320,6 +517,15 @@ export class TwitterOAuthService {
         name: userObject.name
       });
 
+      // Store tokens securely
+      const tokens: TokenStorage = {
+        accessToken,
+        refreshToken,
+        expiresAt: Date.now() + (3600 * 1000) // 1 hour from now
+      };
+
+      await this.storeTokens(userObject.id, tokens);
+
       const account: Partial<SocialAccount> = {
         platform: 'twitter',
         platform_user_id: userObject.id,
@@ -376,15 +582,18 @@ export class TwitterOAuthService {
   // Refresh access token
   async refreshAccessToken(refreshToken: string): Promise<{ accessToken: string; refreshToken?: string } | null> {
     try {
-      const { client: refreshedClient, accessToken, refreshToken: newRefreshToken } =
-        await this.client.refreshOAuth2Token(refreshToken);
-
+      console.log('🔄 Attempting to refresh Twitter access token...');
+      
+      const { client, accessToken, refreshToken: newRefreshToken } = await this.client.refreshOAuth2Token(refreshToken);
+      
+      console.log('✅ Successfully refreshed Twitter access token');
+      
       return {
         accessToken,
-        refreshToken: newRefreshToken || refreshToken
+        refreshToken: newRefreshToken
       };
     } catch (error) {
-      console.error('❌ Error refreshing Twitter token:', error);
+      console.error('❌ Failed to refresh token:', error);
       return null;
     }
   }
@@ -545,6 +754,35 @@ export class LinkedInOAuthService {
 
     return await profileResponse.json();
   }
+
+  async refreshAccessToken(refreshToken: string): Promise<{ accessToken: string; refreshToken?: string } | null> {
+    try {
+      const response = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken,
+          client_id: this.config.clientId,
+          client_secret: this.config.clientSecret,
+        }),
+      });      if (!response.ok) {
+        console.error('LinkedIn token refresh failed:', await response.text());
+        return null;
+      }
+
+      const data = await response.json() as { access_token: string; refresh_token: string };
+      return {
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+      };
+    } catch (error) {
+      console.error('LinkedIn token refresh error:', error);
+      return null;
+    }
+  }
 }
 
 // Facebook OAuth Service
@@ -653,6 +891,35 @@ export class FacebookOAuthService {
         success: false,
         error: error instanceof Error ? error.message : 'Facebook OAuth failed'
       };
+    }
+  }
+  async refreshAccessToken(refreshToken: string): Promise<{ accessToken: string; refreshToken?: string } | null> {
+    try {
+      const params = new URLSearchParams({
+        grant_type: 'fb_exchange_token',
+        client_id: this.config.clientId,
+        client_secret: this.config.clientSecret,
+        fb_exchange_token: refreshToken,
+      });
+      
+      const response = await fetch(`https://graph.facebook.com/v18.0/oauth/access_token?${params}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });if (!response.ok) {
+        console.error('Facebook token refresh failed:', await response.text());
+        return null;
+      }
+
+      const data = await response.json() as { access_token: string; refresh_token: string };
+      return {
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+      };
+    } catch (error) {
+      console.error('Facebook token refresh error:', error);
+      return null;
     }
   }
 }
@@ -771,6 +1038,34 @@ export class InstagramOAuthService {
       };
     }
   }
+  async refreshAccessToken(refreshToken: string): Promise<{ accessToken: string; refreshToken?: string } | null> {
+    try {
+      const params = new URLSearchParams({
+        grant_type: 'ig_refresh_token',
+        access_token: refreshToken,
+      });
+      
+      const response = await fetch(`https://graph.instagram.com/refresh_access_token?${params}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.error('Instagram token refresh failed:', await response.text());        return null;
+      }
+
+      const data = await response.json() as { access_token: string; refresh_token: string };
+      return {
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+      };
+    } catch (error) {
+      console.error('Instagram token refresh error:', error);
+      return null;
+    }
+  }
 }
 
 // OAuth Service Factory
@@ -804,5 +1099,95 @@ export class OAuthServiceFactory {
 
   static getInstagramService() {
     return new InstagramOAuthService();
+  }
+}
+
+// Token Refresh Scheduler
+export class TokenRefreshScheduler {
+  private static instance: TokenRefreshScheduler;
+  private refreshIntervals: Map<string, NodeJS.Timeout> = new Map();
+  private db = getFirestoreClient();
+
+  private constructor() {}
+
+  static getInstance(): TokenRefreshScheduler {
+    if (!TokenRefreshScheduler.instance) {
+      TokenRefreshScheduler.instance = new TokenRefreshScheduler();
+    }
+    return TokenRefreshScheduler.instance;
+  }
+
+  async scheduleTokenRefresh(accountId: string, platform: string, expiresAt: number): Promise<void> {
+    // Clear any existing refresh interval
+    this.clearRefreshInterval(accountId);
+
+    // Calculate time until refresh (5 minutes before expiration)
+    const refreshTime = expiresAt - 5 * 60 * 1000;
+    const now = Date.now();
+    const delay = Math.max(0, refreshTime - now);
+
+    // Schedule the refresh
+    const interval = setTimeout(async () => {
+      try {
+        await this.refreshToken(accountId, platform);
+      } catch (error) {
+        console.error(`Failed to refresh token for ${platform} account ${accountId}:`, error);
+      }
+    }, delay);
+
+    this.refreshIntervals.set(accountId, interval);
+  }
+
+  private clearRefreshInterval(accountId: string): void {
+    const interval = this.refreshIntervals.get(accountId);
+    if (interval) {
+      clearTimeout(interval);
+      this.refreshIntervals.delete(accountId);
+    }
+  }
+
+  private async refreshToken(accountId: string, platform: string): Promise<void> {
+    const accountRef = this.db.collection('social_accounts').doc(accountId);
+    const account = await accountRef.get();
+    
+    if (!account.exists) {
+      console.error(`Account ${accountId} not found`);
+      return;
+    }
+
+    const accountData = account.data();
+    if (!accountData?.refreshToken) {
+      console.error(`No refresh token found for account ${accountId}`);
+      return;
+    }
+
+    const oauthService = OAuthServiceFactory.getService(platform);
+    const result = await oauthService.refreshAccessToken(accountData.refreshToken);
+
+    if (!result) {
+      console.error(`Failed to refresh token for ${platform} account ${accountId}`);
+      return;
+    }
+
+    // Update account with new tokens
+    await accountRef.update({
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken || accountData.refreshToken,
+      tokenUpdatedAt: getServerTimestamp(),
+      expiresAt: Date.now() + (result.refreshToken ? 60 * 24 * 60 * 60 * 1000 : 60 * 60 * 1000) // 60 days or 1 hour
+    });
+
+    // Schedule next refresh
+    await this.scheduleTokenRefresh(
+      accountId,
+      platform,
+      Date.now() + (result.refreshToken ? 60 * 24 * 60 * 60 * 1000 : 60 * 60 * 1000)
+    );
+  }
+
+  stopAllRefreshes(): void {
+    for (const [accountId] of this.refreshIntervals) {
+      this.clearRefreshInterval(accountId);
+    }
   }
 }
