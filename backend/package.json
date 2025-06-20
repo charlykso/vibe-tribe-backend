@@ -1,4 +1,5 @@
-{  "name": "tribe-backend",
+{
+  "name": "tribe-backend",
   "version": "1.0.0",
   "description": "Tribe Backend API Server",
   "type": "module",
