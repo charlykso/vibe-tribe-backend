@@ -8,33 +8,33 @@ import { Server as SocketIOServer } from 'socket.io';
 dotenv.config();
 
 // Import routes
-import authRoutes from './routes/auth';
-import oauthRoutes from './routes/oauth';
-import invitationRoutes from './routes/invitations';
-import userRoutes from './routes/users';
-import socialAccountRoutes from './routes/socialAccounts';
-import postsRoutes from './routes/posts';
-import analyticsRoutes from './routes/analytics';
-import mediaRoutes from './routes/media';
+import authRoutes from './routes/auth.js';
+import oauthRoutes from './routes/oauth.js';
+import invitationRoutes from './routes/invitations.js';
+import userRoutes from './routes/users.js';
+import socialAccountRoutes from './routes/socialAccounts.js';
+import postsRoutes from './routes/posts.js';
+import analyticsRoutes from './routes/analytics.js';
+import mediaRoutes from './routes/media.js';
 // Phase 3 routes
-import communitiesRoutes from './routes/communities';
-import moderationRoutes from './routes/moderation';
-import aiRoutes from './routes/ai';
+import communitiesRoutes from './routes/communities.js';
+import moderationRoutes from './routes/moderation.js';
+import aiRoutes from './routes/ai.js';
 
 // Import middleware
-import { errorHandler } from './middleware/errorHandler';
-import { requestLogger } from './middleware/requestLogger';
-import { authMiddleware } from './middleware/auth';
-import { sanitizers } from './middleware/inputSanitization';
-import { csrfTokenGenerator, getCsrfToken } from './middleware/csrfProtection';
-import { smartRateLimit, clearRateLimitStore } from './middleware/advancedRateLimit';
-import { comprehensiveSecurityHeaders } from './middleware/securityHeaders';
+import { errorHandler } from './middleware/errorHandler.js';
+import { requestLogger } from './middleware/requestLogger.js';
+import { authMiddleware } from './middleware/auth.js';
+import { sanitizers } from './middleware/inputSanitization.js';
+import { csrfTokenGenerator, getCsrfToken } from './middleware/csrfProtection.js';
+import { smartRateLimit, clearRateLimitStore } from './middleware/advancedRateLimit.js';
+import { comprehensiveSecurityHeaders } from './middleware/securityHeaders.js';
 
 // Import services
-import { initializeDatabase, initializeCollections } from './services/database';
-import { initializeWebSocket } from './services/websocket';
-import { initializeQueues, shutdownQueues } from './services/queue';
-import { initializeCronJobs, stopCronJobs } from './services/cron';
+import { initializeDatabase, initializeCollections } from './services/database.js';
+import { initializeWebSocket } from './services/websocket.js';
+import { initializeQueues, shutdownQueues } from './services/queue.js';
+import { initializeCronJobs, stopCronJobs } from './services/cron.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
