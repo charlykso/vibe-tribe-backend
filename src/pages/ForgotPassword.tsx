@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { TribeLogo } from '@/components/ui/TribeLogo';
 
 const forgotPasswordSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -94,7 +95,7 @@ export const ForgotPassword: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">          <div className="flex items-center justify-center mb-4">
-            <img src="/Tribe-SVG.svg" alt="Tribe" className="h-12 w-auto" />
+            <TribeLogo className="h-12 w-auto" alt="Tribe" />
           </div>
           <CardTitle className="text-2xl text-center">Reset your password</CardTitle>
           <CardDescription className="text-center">

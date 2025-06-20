@@ -40,6 +40,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { TribeLogo } from "@/components/ui/TribeLogo";
 
 const navigationItems = [
   {
@@ -129,7 +130,7 @@ export function AppSidebar() {
     <Sidebar className="border-r border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 w-64 min-w-64">
       <SidebarContent className="p-4 overflow-y-auto">
         <div className="mb-6 flex items-center gap-2">
-          <img src="/Tribe-SVG.svg" alt="VibeTribe" className="h-8 w-auto" />
+          <TribeLogo className="h-8 w-auto" alt="VibeTribe" />
         </div>
 
         <SidebarGroup>

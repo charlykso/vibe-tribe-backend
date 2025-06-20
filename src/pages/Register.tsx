@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
+import { TribeLogo } from '@/components/ui/TribeLogo';
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -69,9 +70,8 @@ export const Register: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 px-4 py-8">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">          <div className="flex items-center justify-center mb-4">
-            <img src="/Tribe-SVG.svg" alt="Tribe" className="h-12 w-auto" />
+      <Card className="w-full max-w-md">        <CardHeader className="space-y-1">          <div className="flex items-center justify-center mb-4">
+            <TribeLogo className="h-12 w-auto" alt="Tribe" />
           </div>
           <CardTitle className="text-2xl text-center">Create your account</CardTitle>
           <CardDescription className="text-center">
