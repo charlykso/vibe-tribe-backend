@@ -42,15 +42,16 @@ app.get('/health', (req, res) => {
 });
 
 // Simple auth endpoints for testing
-app.post('/api/v1/auth/register', async (req: Request, res: Response) => {
+app.post('/api/v1/auth/register', async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, name } = req.body;
 
     // Basic validation
     if (!email || !password || !name) {
-      return res.status(400).json({
+      res.status(400).json({
         error: 'Missing required fields: email, password, name'
       });
+      return;
     }
 
     // Simulate user registration (without actual auth logic for testing)
@@ -76,14 +77,15 @@ app.post('/api/v1/auth/register', async (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/v1/auth/login', async (req: Request, res: Response) => {
+app.post('/api/v1/auth/login', async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({
+      res.status(400).json({
         error: 'Missing required fields: email, password'
       });
+      return;
     }
 
     // Simulate login response
