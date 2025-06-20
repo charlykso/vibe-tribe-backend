@@ -1,4 +1,4 @@
-# VibeTribe - Complete Application Documentation
+# Tribe - Complete Application Documentation
 
 ## 📋 Table of Contents
 
@@ -19,7 +19,7 @@
 
 ## 🎯 Project Overview
 
-VibeTribe is a comprehensive social media management platform that allows users to:
+Tribe is a comprehensive social media management platform that allows users to:
 
 - Manage multiple social media accounts (Twitter, LinkedIn, Facebook, Instagram)
 - Create and schedule posts across platforms
@@ -182,7 +182,7 @@ JWT_EXPIRES_IN=7d
 # SendGrid Email
 SENDGRID_API_KEY=SG.your_sendgrid_api_key
 FROM_EMAIL=your_email@domain.com
-FROM_NAME=VibeTribe
+FROM_NAME=Tribe
 
 # Social Media OAuth
 TWITTER_CLIENT_ID=your_twitter_client_id
@@ -252,18 +252,18 @@ npm run dev
 
 1. **Verification Email**
 
-   - Subject: "Verify your VibeTribe account"
+   - Subject: "Verify your Tribe account"
    - Contains secure verification link
    - Expires in 24 hours
 
 2. **Password Reset**
 
-   - Subject: "Reset your VibeTribe password"
+   - Subject: "Reset your Tribe password"
    - Contains secure reset link
    - Expires in 1 hour
 
 3. **Organization Invitation**
-   - Subject: "You're invited to join [Organization] on VibeTribe"
+   - Subject: "You're invited to join [Organization] on Tribe"
    - Contains invitation acceptance link
    - Expires in 7 days
 
@@ -542,7 +542,7 @@ JWT_EXPIRES_IN=7d
 # SendGrid Email
 SENDGRID_API_KEY=SG.your_sendgrid_api_key
 FROM_EMAIL=your_email@domain.com
-FROM_NAME=VibeTribe
+FROM_NAME=Tribe
 
 # Social Media OAuth (Update redirect URIs)
 TWITTER_CLIENT_ID=your_twitter_client_id
@@ -821,7 +821,7 @@ git push origin feature/new-feature
 
 - **GitHub Issues**: Report bugs and feature requests
 - **Discord Community**: Join our developer community
-- **Email Support**: support@vibetribe.com
+- **Email Support**: support@tribe.com
 
 ---
 
@@ -852,4 +852,4 @@ git push origin feature/new-feature
 
 **Last Updated**: December 2024
 **Version**: 1.0.0
-**Maintainer**: VibeTribe Development Team
+**Maintainer**: Tribe Development Team

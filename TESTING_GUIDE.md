@@ -1,8 +1,9 @@
-# VibeTribe Manager - Testing Guide
+# Tribe Manager - Testing Guide
 
 ## 🧪 How to Test All Implemented Features
 
 ### **Getting Started**
+
 1. **Development Server**: Navigate to `http://localhost:8080`
 2. **Navigation**: Use the sidebar to switch between different sections
 3. **Dark Mode**: Toggle using the theme switcher in the top navigation
@@ -10,12 +11,14 @@
 ---
 
 ## 📝 **1. PostComposer Testing**
+
 **Navigate to:** "Create Post" in sidebar
 
 ### **Test Scenarios:**
+
 - ✅ **Platform Selection**: Click different platform buttons (Twitter, LinkedIn, Instagram, Facebook)
 - ✅ **Character Counting**: Type content and watch real-time character counters
-- ✅ **Character Limits**: 
+- ✅ **Character Limits**:
   - Twitter: Try typing 300+ characters (should show red warning)
   - LinkedIn: Type 3000+ characters
 - ✅ **Emoji Picker**: Click the smile icon and insert emojis
@@ -27,9 +30,11 @@
 ---
 
 ## 📅 **2. Post Scheduler Testing**
+
 **Navigate to:** "Scheduler" in sidebar
 
 ### **Test Scenarios:**
+
 - ✅ **Calendar Views**: Switch between Month, Week, Day views
 - ✅ **Timezone Selection**: Change timezone and observe time updates
 - ✅ **Create Scheduled Post**: Click on any date in calendar
@@ -41,9 +46,11 @@
 ---
 
 ## 📄 **3. Draft Manager Testing**
+
 **Navigate to:** "Drafts" in sidebar
 
 ### **Test Scenarios:**
+
 - ✅ **View Drafts**: Browse existing draft posts
 - ✅ **Search Functionality**: Search drafts by title or content
 - ✅ **Filter Options**: Filter by platform, status, date
@@ -56,9 +63,11 @@
 ---
 
 ## 🖼️ **4. Media Upload Testing**
+
 **Navigate to:** "Media Library" in sidebar
 
 ### **Test Scenarios:**
+
 - ✅ **Drag & Drop**: Drag image files into the upload zone
 - ✅ **File Selection**: Click "Choose Files" to select files
 - ✅ **File Validation**: Try uploading unsupported file types
@@ -71,9 +80,11 @@
 ---
 
 ## 📧 **5. Unified Inbox Testing**
+
 **Navigate to:** "Inbox" in sidebar
 
 ### **Test Scenarios:**
+
 - ✅ **Message List**: Browse messages from different platforms
 - ✅ **Search Messages**: Search by sender name or content
 - ✅ **Filter Options**: Filter by platform, status, message type
@@ -86,9 +97,11 @@
 ---
 
 ## 🔗 **6. Platform Connections Testing**
+
 **Navigate to:** "Platforms" in sidebar
 
 ### **Test Scenarios:**
+
 - ✅ **Connection Status**: View different platform connection states
 - ✅ **Account Information**: See profile details and follower counts
 - ✅ **Performance Metrics**: Review monthly analytics per platform
@@ -101,9 +114,11 @@
 ---
 
 ## 👥 **7. Community Management Testing**
+
 **Navigate to:** "Community" in sidebar
 
 ### **Test Scenarios:**
+
 - ✅ **Member Directory**: Browse community members
 - ✅ **Search Members**: Search by name, username, email
 - ✅ **Filter Members**: Filter by role and status
@@ -117,9 +132,11 @@
 ---
 
 ## 📊 **8. Enhanced Analytics Testing**
+
 **Navigate to:** "Analytics" in sidebar
 
 ### **Test Scenarios:**
+
 - ✅ **Date Range Selection**: Test 7d, 30d, 90d buttons
 - ✅ **Custom Date Range**: Use calendar picker for custom dates
 - ✅ **Platform Filtering**: Filter analytics by specific platforms
@@ -133,16 +150,19 @@
 ## 🎨 **UI/UX Testing**
 
 ### **Responsive Design:**
+
 - ✅ **Desktop**: Test on full-screen desktop
 - ✅ **Tablet**: Resize browser to tablet width
 - ✅ **Mobile**: Test mobile responsiveness
 
 ### **Dark Mode:**
+
 - ✅ **Theme Toggle**: Switch between light and dark themes
 - ✅ **Consistency**: Ensure all components respect theme
 - ✅ **Persistence**: Theme should persist across page refreshes
 
 ### **Accessibility:**
+
 - ✅ **Keyboard Navigation**: Tab through interface elements
 - ✅ **Screen Reader**: Test with screen reader software
 - ✅ **Color Contrast**: Verify text readability
@@ -153,16 +173,19 @@
 ## 🔧 **Technical Testing**
 
 ### **Performance:**
+
 - ✅ **Load Times**: Monitor component loading speeds
 - ✅ **Memory Usage**: Check for memory leaks during navigation
 - ✅ **Bundle Size**: Verify optimized build sizes
 
 ### **Error Handling:**
+
 - ✅ **Network Errors**: Test with network disconnected
 - ✅ **Invalid Data**: Try entering invalid form data
 - ✅ **Edge Cases**: Test with empty states and extreme values
 
 ### **Browser Compatibility:**
+
 - ✅ **Chrome**: Primary testing browser
 - ✅ **Firefox**: Cross-browser compatibility
 - ✅ **Safari**: WebKit engine testing
@@ -173,11 +196,13 @@
 ## 🚀 **Integration Testing**
 
 ### **Data Flow:**
+
 - ✅ **State Management**: Test data persistence across components
 - ✅ **Local Storage**: Verify draft saving and recovery
 - ✅ **Component Communication**: Test parent-child data flow
 
 ### **User Workflows:**
+
 - ✅ **Content Creation**: Complete post creation workflow
 - ✅ **Scheduling**: Full scheduling and management process
 - ✅ **Community Management**: Member approval and moderation workflow
@@ -188,6 +213,7 @@
 ## 📋 **Test Checklist**
 
 ### **Core Functionality:**
+
 - [ ] All navigation links work
 - [ ] All forms submit properly
 - [ ] All buttons trigger correct actions
@@ -195,12 +221,14 @@
 - [ ] All dropdowns function correctly
 
 ### **Data Persistence:**
+
 - [ ] Drafts save automatically
 - [ ] Settings persist across sessions
 - [ ] Filters remember selections
 - [ ] Theme preferences save
 
 ### **Visual Feedback:**
+
 - [ ] Loading states display
 - [ ] Success messages appear
 - [ ] Error messages show

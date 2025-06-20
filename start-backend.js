@@ -4,7 +4,7 @@ import { spawn, exec } from 'child_process'
 import net from 'net'
 
 const TARGET_PORT = 3001
-const BACKEND_SCRIPT = 'simple-backend.cjs'
+const BACKEND_SCRIPT = 'backend/src/server.ts'
 
 /**
  * Check if a port is available
@@ -77,7 +77,7 @@ function killProcesses(pids) {
 function startBackend() {
   console.log(`🚀 Starting VibeTribe Backend on port ${TARGET_PORT}...`)
 
-  const backend = spawn('node', [BACKEND_SCRIPT], {
+  const backend = spawn('npx', ['tsx', BACKEND_SCRIPT], {
     stdio: 'inherit',
     env: { ...process.env, PORT: TARGET_PORT },
   })

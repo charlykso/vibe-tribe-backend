@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitter OAuth Test - VibeTribe</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8fafc;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #1a202c;
+        }
+        .test-button {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 8px;
+            background-color: #1DA1F2;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+        .test-button:hover {
+            background-color: #0d8bd9;
+            transform: translateY(-1px);
+        }
+        .health-button {
+            background-color: #48bb78;
+        }
+        .health-button:hover {
+            background-color: #38a169;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: 8px;
+            display: none;
+            font-weight: 500;
+        }
+        .success {
+            background-color: #f0fff4;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+        .error {
+            background-color: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #feb2b2;
+        }
+        .info {
+            background-color: #ebf8ff;
+            color: #2a4365;
+            border: 1px solid #90cdf4;
+        }
+        .warning {
+            background-color: #fffaf0;
+            color: #744210;
+            border: 1px solid #f6e05e;
+        }
+        .backend-info {
+            background-color: #f7fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #4299e1;
+        }
+        .results-container {
+            margin-top: 30px;
+        }
+        pre {
+            background-color: #1a202c;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .step-indicator {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f7fafc;
+            border-radius: 6px;
+        }
+        .step-number {
+            background-color: #4299e1;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 12px;
+        }
+        .oauth-flow {
+            border: 2px dashed #cbd5e0;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .oauth-flow.active {
+            border-color: #4299e1;
+            background-color: #ebf8ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🐦 Twitter OAuth Test Suite</h1>
+            <p>Test your VibeTribe Twitter OAuth integration step by step</p>
+        </div>
+        
+        <div class="backend-info">
+            <h3>🚀 Backend Configuration:</h3>
+            <p><strong>Local Backend:</strong> <span id="local-url">http://localhost:3001</span></p>
+            <p><strong>Production Backend:</strong> <span id="prod-url">https://vibe-tribe-backend-8yvp.onrender.com</span></p>
+            <p><strong>Current Target:</strong> <span id="current-target">Local</span></p>
+            <p><strong>Backend Status:</strong> <span id="backend-status">❓ Not tested</span></p>
+        </div>
+
+        <div class="step-indicator">
+            <div class="step-number">1</div>
+            <div>First, let's check if your backend server is running</div>
+        </div>
+
+        <button class="test-button health-button" onclick="testBackendHealth()">
+            🏥 Test Backend Health
+        </button>        <button class="test-button health-button" onclick="switchBackend()" id="switch-backend-btn">
+            🔄 Switch to Local Backend
+        </button>
+
+        <div class="step-indicator">
+            <div class="step-number">2</div>
+            <div>Test Twitter OAuth configuration and credentials</div>
+        </div>
+
+        <button class="test-button" onclick="testTwitterConfig()">
+            ⚙️ Test Twitter Configuration
+        </button>
+
+        <div class="step-indicator">
+            <div class="step-number">3</div>
+            <div>Test OAuth URL generation</div>
+        </div>
+
+        <button class="test-button" onclick="testTwitterOAuthInitiation()">
+            🔗 Generate Twitter OAuth URL
+        </button>
+
+        <div class="step-indicator">
+            <div class="step-number">4</div>
+            <div>Test complete OAuth flow (requires user interaction)</div>
+        </div>
+
+        <div class="oauth-flow" id="oauth-flow">
+            <h4>🔐 Complete OAuth Flow</h4>
+            <p>This will open Twitter's authorization page in a new window</p>
+            <button class="test-button" onclick="testCompleteOAuthFlow()" disabled id="oauth-flow-btn">
+                🚀 Start Complete OAuth Flow
+            </button>
+        </div>
+
+        <div id="status" class="status"></div>
+
+        <div class="results-container">
+            <h3>📋 Test Results:</h3>
+            <pre id="results">No tests run yet. Click a test button to begin...</pre>
+        </div>
+    </div>
+
+    <script>
+        let currentBackend = 'local';
+        const backends = {
+            local: 'http://localhost:3001',
+            production: 'https://vibe-tribe-backend-8yvp.onrender.com'
+        };
+
+        function getCurrentBackendUrl() {
+            return backends[currentBackend];
+        }
+
+        function getApiBase() {
+            return `${getCurrentBackendUrl()}/api/v1`;
+        }        function switchBackend() {
+            currentBackend = currentBackend === 'local' ? 'production' : 'local';
+            document.getElementById('current-target').textContent = 
+                currentBackend === 'local' ? 'Local' : 'Production';
+            document.getElementById('backend-status').textContent = '❓ Not tested';
+            
+            // Update button text
+            const switchBtn = document.getElementById('switch-backend-btn');
+            switchBtn.innerHTML = currentBackend === 'local' ? 
+                '🔄 Switch to Production Backend' : 
+                '🔄 Switch to Local Backend';
+            
+            showStatus(`🔄 Switched to ${currentBackend} backend. Please test health again.`, 'info');
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.innerHTML = message;
+            statusDiv.style.display = 'block';
+        }
+
+        function updateResults(data, title = 'Test Results') {
+            const results = {
+                timestamp: new Date().toISOString(),
+                backend: getCurrentBackendUrl(),
+                title: title,
+                data: data
+            };
+            document.getElementById('results').textContent = JSON.stringify(results, null, 2);
+        }        async function testBackendHealth() {
+            showStatus('🔄 Testing backend health...', 'info');
+            
+            try {
+                const response = await fetch(`${getCurrentBackendUrl()}/api/v1/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showStatus(`✅ Backend is healthy and running on ${currentBackend}!`, 'success');
+                    document.getElementById('backend-status').textContent = '✅ Online';
+                    updateResults(data, 'Backend Health Check');
+                    
+                    // Enable further testing
+                    enableNextSteps();
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${data.message || 'Unknown error'}`);
+                }
+            } catch (error) {
+                showStatus(`❌ Backend health check failed: ${error.message}`, 'error');
+                document.getElementById('backend-status').textContent = '❌ Offline';
+                updateResults({ error: error.message }, 'Backend Health Check Error');
+                
+                if (currentBackend === 'local') {
+                    showStatus(`❌ Local backend not responding. Try: 1) Start your backend server, or 2) Switch to production backend`, 'warning');
+                }
+            }
+        }
+
+        async function testTwitterConfig() {
+            showStatus('🔄 Testing Twitter OAuth configuration...', 'info');
+            
+            try {
+                const response = await fetch(`${getApiBase()}/oauth/config/twitter`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showStatus('✅ Twitter OAuth configuration loaded successfully!', 'success');
+                    updateResults(data, 'Twitter Configuration Check');
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${data.error || data.message || 'Unknown error'}`);
+                }
+            } catch (error) {
+                showStatus(`❌ Twitter configuration test failed: ${error.message}`, 'error');
+                updateResults({ error: error.message }, 'Twitter Configuration Error');
+            }
+        }
+
+        async function testTwitterOAuthInitiation() {
+            showStatus('🔄 Testing Twitter OAuth URL generation...', 'info');
+            
+            try {
+                const response = await fetch(`${getApiBase()}/oauth/initiate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        platform: 'twitter',
+                        redirect_uri: `${getCurrentBackendUrl()}/oauth/callback`
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.authUrl) {
+                    showStatus('✅ Twitter OAuth URL generated successfully!', 'success');
+                    updateResults(data, 'Twitter OAuth URL Generation');
+                    
+                    // Enable the complete OAuth flow button
+                    document.getElementById('oauth-flow-btn').disabled = false;
+                    document.getElementById('oauth-flow').classList.add('active');
+                    
+                    // Store the auth URL for the complete flow
+                    window.lastAuthUrl = data.authUrl;
+                    window.lastCodeVerifier = data.codeVerifier;
+                } else {
+                    throw new Error(`OAuth initiation failed: ${data.error || data.message || 'Unknown error'}`);
+                }
+            } catch (error) {
+                showStatus(`❌ Twitter OAuth initiation test failed: ${error.message}`, 'error');
+                updateResults({ error: error.message }, 'Twitter OAuth Initiation Error');
+            }
+        }
+
+        async function testCompleteOAuthFlow() {
+            if (!window.lastAuthUrl) {
+                showStatus('❌ No OAuth URL available. Please run "Generate Twitter OAuth URL" first.', 'error');
+                return;
+            }
+
+            showStatus('🔄 Starting complete OAuth flow. Check the popup window...', 'info');
+            
+            try {
+                // Open Twitter OAuth in a new window
+                const popup = window.open(window.lastAuthUrl, 'twitter_oauth', 'width=500,height=600,scrollbars=yes');
+                
+                showStatus(`
+                    🔐 OAuth window opened! 
+                    <br><br>
+                    <strong>Next steps:</strong>
+                    <br>1. Authorize the app in the popup window
+                    <br>2. You'll be redirected to your callback URL
+                    <br>3. Copy the authorization code from the URL
+                    <br>4. Come back here to test the callback
+                    <br><br>
+                    <button class="test-button" onclick="testOAuthCallback()" style="margin-top: 10px;">
+                        📥 Test OAuth Callback
+                    </button>
+                `, 'info');
+
+            } catch (error) {
+                showStatus(`❌ Failed to open OAuth window: ${error.message}`, 'error');
+                updateResults({ error: error.message }, 'Complete OAuth Flow Error');
+            }
+        }
+
+        async function testOAuthCallback() {
+            const code = prompt('Please enter the authorization code from the callback URL:');
+            if (!code) {
+                showStatus('❌ No authorization code provided.', 'error');
+                return;
+            }
+
+            showStatus('🔄 Testing OAuth callback with authorization code...', 'info');
+            
+            try {
+                const response = await fetch(`${getApiBase()}/oauth/callback/twitter`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        code: code,
+                        code_verifier: window.lastCodeVerifier || 'test_verifier',
+                        state: 'test_state'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showStatus('🎉 Twitter OAuth flow completed successfully! Account connected.', 'success');
+                    updateResults(data, 'Complete Twitter OAuth Flow');
+                } else {
+                    throw new Error(`OAuth callback failed: ${data.error || data.message || 'Unknown error'}`);
+                }
+            } catch (error) {
+                showStatus(`❌ OAuth callback test failed: ${error.message}`, 'error');
+                updateResults({ error: error.message }, 'OAuth Callback Error');
+            }
+        }
+
+        function enableNextSteps() {
+            // Enable additional test buttons when backend is healthy
+            const buttons = document.querySelectorAll('button:disabled');
+            buttons.forEach(btn => {
+                if (btn.id !== 'oauth-flow-btn') {
+                    btn.disabled = false;
+                }
+            });
+        }
+
+        // Initialize the page
+        window.onload = function() {
+            showStatus('👋 Welcome! Start by testing your backend health.', 'info');
+        };
+    </script>
+</body>
+</html>

@@ -102,7 +102,7 @@ export const DemoOAuth = () => {
             Connect to {platformInfo.name}
           </CardTitle>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            SocialTribe would like to connect to your {platformInfo.name} account
+            Tribe would like to connect to your {platformInfo.name} account
           </p>
         </CardHeader>
         
@@ -175,7 +175,7 @@ export const DemoOAuth = () => {
           </div>
 
           <p className="text-xs text-gray-500 text-center">
-            By authorizing, you agree to allow VibeTribe to access your {platformInfo.name} account
+            By authorizing, you agree to allow Tribe to access your {platformInfo.name} account
             according to the permissions listed above.
           </p>
         </CardContent>

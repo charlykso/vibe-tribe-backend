@@ -37,7 +37,7 @@ export interface ResetPasswordData {
 
 
 export class AuthService {
-  private static readonly API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3004/api/v1';
+  private static readonly API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
 
   static async login(credentials: LoginCredentials): Promise<{ user: User; token: string }> {
     const response = await fetch(`${this.API_URL}/auth/login`, {

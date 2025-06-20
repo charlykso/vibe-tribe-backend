@@ -2,9 +2,10 @@
 
 ## ✅ Your Backend is Ready!
 
-I've prepared your VibeTribe backend for direct upload to Render:
+I've prepared your Tribe backend for direct upload to Render:
 
 ### 📦 **Deployment Package Created:**
+
 - **File**: `vibe-tribe-backend-render.zip`
 - **Location**: `C:\work\test\vibe-tribe-manager\vibe-tribe-backend-render.zip`
 - **Size**: Contains all necessary files (built code, dependencies, config)
@@ -12,34 +13,40 @@ I've prepared your VibeTribe backend for direct upload to Render:
 ### 🎯 **Step-by-Step Upload Process:**
 
 #### **Step 1: Go to Render**
+
 1. Open: https://render.com
 2. Sign up or log in
 3. Click **"New +"** button
 4. Select **"Web Service"**
 
 #### **Step 2: Choose Upload Method**
+
 1. Select **"Deploy an existing image or build and deploy from a Git repository"**
 2. Choose **"Build and deploy from a Git repository"**
-3. Click **"Use existing image"** 
+3. Click **"Use existing image"**
 4. Then select **"Upload from computer"**
 
 #### **Step 3: Upload Your Zip File**
+
 1. Click **"Choose File"** or drag and drop
 2. Select: `vibe-tribe-backend-render.zip`
 3. Wait for upload to complete
 
 #### **Step 4: Configure Service**
+
 - **Name**: `vibe-tribe-backend`
 - **Environment**: `Node`
 - **Region**: Choose closest to your users
 - **Plan**: `Free` (for testing)
 
 #### **Step 5: Build Settings** (Auto-detected)
+
 - **Build Command**: `npm install && npm run build`
 - **Start Command**: `npm run start`
 - **Node Version**: 18+
 
 #### **Step 6: Add Environment Variables**
+
 Click **"Environment"** tab and add these variables:
 
 ```
@@ -73,21 +80,25 @@ BCRYPT_ROUNDS=12
 ```
 
 #### **Step 7: Deploy**
+
 1. Click **"Create Web Service"**
 2. Wait for deployment (5-10 minutes)
 3. Note your Render URL: `https://your-app-name.onrender.com`
 
 #### **Step 8: Test Deployment**
+
 Visit: `https://your-app-name.onrender.com/health`
 Should return: `{"status":"OK","timestamp":"...","uptime":...}`
 
 ### 🔗 **After Deployment:**
+
 1. **Update Netlify environment variables:**
    - `VITE_API_URL=https://your-render-app.onrender.com/api/v1`
    - `VITE_WS_URL=wss://your-render-app.onrender.com`
 2. **Redeploy Netlify frontend**
 
 ### 📋 **What's Included in the Zip:**
+
 - ✅ Built JavaScript files (`dist/` folder)
 - ✅ Package.json with dependencies
 - ✅ Render configuration files
@@ -95,4 +106,5 @@ Should return: `{"status":"OK","timestamp":"...","uptime":...}`
 - ✅ Database migrations
 
 ### 🆘 **Need Help?**
+
 If you encounter any issues during upload, let me know and I can guide you through each step!

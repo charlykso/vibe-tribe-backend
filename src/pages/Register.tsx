@@ -70,14 +70,12 @@ export const Register: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 px-4 py-8">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <div className="flex items-center justify-center mb-4">
-            <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg"></div>
-            <span className="ml-2 text-2xl font-bold">SocialTribe</span>
+        <CardHeader className="space-y-1">          <div className="flex items-center justify-center mb-4">
+            <img src="/Tribe-SVG.svg" alt="Tribe" className="h-12 w-auto" />
           </div>
           <CardTitle className="text-2xl text-center">Create your account</CardTitle>
           <CardDescription className="text-center">
-            Join SocialTribe and start managing your communities
+            Join Tribe and start managing your communities
           </CardDescription>
         </CardHeader>
 

@@ -1,4 +1,5 @@
-Complete Backend Implementation Guide for VibeTribe
+
+Complete Backend Implementation Guide for Tribe
 1. Backend Technology Stack
 
 Copy
@@ -30,8 +31,10 @@ Copy
   - pages_manage_posts
   - instagram_basic
   - instagram_content_publish
-  
-// Rate Limits:
+
+/
+/
+Rate Limits:
 - 200 calls/hour per user
 - 4800 calls/day
 Twitter/X
@@ -46,8 +49,10 @@ Copy
   - tweet.write
   - users.read
   - follows.read
-  
-// Rate Limits:
+
+/
+/
+Rate Limits:
 - 300 requests/15min (reading)
 - 300 posts/3hours
 LinkedIn
@@ -62,8 +67,10 @@ Copy
   - r_emailaddress
   - w_member_social
   - r_organization_social
-  
-// Rate Limits:
+
+/
+/
+Rate Limits:
 - 100 requests/day (varies by endpoint)
 TikTok
 javascript
@@ -106,8 +113,8 @@ CREATE TABLE organizations (
 
 -- SOCIAL MEDIA MANAGEMENT
 CREATE TABLE social_accounts (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (),
+    organization_id UUID REFERENCES organizations (id) ON DELETE CASCADE,
     platform VARCHAR(50) NOT NULL,
     platform_account_id VARCHAR(255) NOT NULL,
     account_name VARCHAR(255),
@@ -115,68 +122,97 @@ CREATE TABLE social_accounts (
     account_avatar TEXT,
     access_token TEXT ENCRYPTED,
     refresh_token TEXT ENCRYPTED,
-    token_expires_at TIMESTAMP WITH TIME ZONE,
-    permissions JSONB,
-    is_active BOOLEAN DEFAULT true,
-    last_sync_at TIMESTAMP WITH TIME ZONE,
-    metadata JSONB DEFAULT '{}',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(organization_id, platform, platform_account_id)
+    token_expires_at TIMESTAMP
+    WITH
+        TIME ZONE,
+        permissions JSONB,
+        is_active BOOLEAN DEFAULT true,
+        last_sync_at TIMESTAMP
+    WITH
+        TIME ZONE,
+        metadata JSONB DEFAULT '{}',
+        created_at TIMESTAMP
+    WITH
+        TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (
+            organization_id,
+            platform,
+            platform_account_id
+        )
 );
 
 CREATE TABLE posts (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
-    created_by UUID REFERENCES users(id),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (),
+    organization_id UUID REFERENCES organizations (id) ON DELETE CASCADE,
+    created_by UUID REFERENCES users (id),
     status VARCHAR(50) DEFAULT 'draft', -- draft, scheduled, publishing, published, failed
     content TEXT NOT NULL,
     media JSONB DEFAULT '[]', -- [{url, type, alt_text, platform_media_id}]
     platforms JSONB NOT NULL, -- [{platform, account_id, platform_post_id, status}]
-    scheduled_for TIMESTAMP WITH TIME ZONE,
-    published_at TIMESTAMP WITH TIME ZONE,
-    settings JSONB DEFAULT '{}', -- {first_comment, location, tags, etc.}
-    analytics JSONB DEFAULT '{}', -- {likes, comments, shares, reach}
-    approval_status VARCHAR(50), -- pending, approved, rejected
-    approved_by UUID REFERENCES users(id),
-    error_log JSONB,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    scheduled_for TIMESTAMP
+    WITH
+        TIME ZONE,
+        published_at TIMESTAMP
+    WITH
+        TIME ZONE,
+        settings JSONB DEFAULT '{}', -- {first_comment, location, tags, etc.}
+        analytics JSONB DEFAULT '{}', -- {likes, comments, shares, reach}
+        approval_status VARCHAR(50), -- pending, approved, rejected
+        approved_by UUID REFERENCES users (id),
+        error_log JSONB,
+        created_at TIMESTAMP
+    WITH
+        TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ANALYTICS & INSIGHTS
 CREATE TABLE analytics_snapshots (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    social_account_id UUID REFERENCES social_accounts(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (),
+    social_account_id UUID REFERENCES social_accounts (id) ON DELETE CASCADE,
     snapshot_date DATE NOT NULL,
     metrics JSONB NOT NULL, -- {followers, following, posts, engagement_rate, etc.}
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(social_account_id, snapshot_date)
+    created_at TIMESTAMP
+    WITH
+        TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (
+            social_account_id,
+            snapshot_date
+        )
 );
 
 CREATE TABLE post_analytics (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    post_id UUID REFERENCES posts(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (),
+    post_id UUID REFERENCES posts (id) ON DELETE CASCADE,
     platform VARCHAR(50) NOT NULL,
-    recorded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    metrics JSONB NOT NULL, -- {likes, comments, shares, saves, reach, impressions}
-    UNIQUE(post_id, platform, recorded_at)
+    recorded_at TIMESTAMP
+    WITH
+        TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        metrics JSONB NOT NULL, -- {likes, comments, shares, saves, reach, impressions}
+        UNIQUE (
+            post_id,
+            platform,
+            recorded_at
+        )
 );
 
 -- COMMUNITY MANAGEMENT
 CREATE TABLE communities (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (),
+    organization_id UUID REFERENCES organizations (id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     platform VARCHAR(50) NOT NULL, -- discord, slack, telegram, etc.
     platform_id VARCHAR(255),
     member_count INTEGER DEFAULT 0,
     settings JSONB DEFAULT '{}',
     is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP
+    WITH
+        TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE community_members (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    community_id UUID REFERENCES communities(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (),
+    community_id UUID REFERENCES communities (id) ON DELETE CASCADE,
     platform_user_id VARCHAR(255) NOT NULL,
     username VARCHAR(255),
     display_name VARCHAR(255),
@@ -184,16 +220,23 @@ CREATE TABLE community_members (
     roles JSONB DEFAULT '[]',
     tags JSONB DEFAULT '[]', -- ['vip', 'supporter', 'active']
     engagement_score INTEGER DEFAULT 0,
-    sentiment_score DECIMAL(3,2), -- -1 to 1
-    join_date TIMESTAMP WITH TIME ZONE,
-    last_active TIMESTAMP WITH TIME ZONE,
-    metadata JSONB DEFAULT '{}',
-    UNIQUE(community_id, platform_user_id)
+    sentiment_score DECIMAL(3, 2), -- -1 to 1
+    join_date TIMESTAMP
+    WITH
+        TIME ZONE,
+        last_active TIMESTAMP
+    WITH
+        TIME ZONE,
+        metadata JSONB DEFAULT '{}',
+        UNIQUE (
+            community_id,
+            platform_user_id
+        )
 );
 
 CREATE TABLE messages (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (),
+    organization_id UUID REFERENCES organizations (id) ON DELETE CASCADE,
     platform VARCHAR(50) NOT NULL,
     platform_message_id VARCHAR(255),
     conversation_id VARCHAR(255),
@@ -204,43 +247,55 @@ CREATE TABLE messages (
     sentiment VARCHAR(50), -- positive, neutral, negative
     is_read BOOLEAN DEFAULT false,
     is_archived BOOLEAN DEFAULT false,
-    assigned_to UUID REFERENCES users(id),
+    assigned_to UUID REFERENCES users (id),
     tags JSONB DEFAULT '[]',
     metadata JSONB DEFAULT '{}',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP
+    WITH
+        TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- AUTOMATION & WORKFLOWS
 CREATE TABLE automation_rules (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (),
+    organization_id UUID REFERENCES organizations (id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     is_active BOOLEAN DEFAULT true,
     trigger_type VARCHAR(50), -- new_follower, mention, keyword, time_based
     trigger_conditions JSONB NOT NULL,
     actions JSONB NOT NULL, -- [{type: 'auto_reply', content: '...'}]
     execution_count INTEGER DEFAULT 0,
-    last_executed TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    last_executed TIMESTAMP
+    WITH
+        TIME ZONE,
+        created_at TIMESTAMP
+    WITH
+        TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- MODERATION
 CREATE TABLE moderation_queue (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
-    community_id UUID REFERENCES communities(id),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (),
+    organization_id UUID REFERENCES organizations (id) ON DELETE CASCADE,
+    community_id UUID REFERENCES communities (id),
     content_type VARCHAR(50), -- message, comment, post
     content_id VARCHAR(255),
     content TEXT,
     author_id VARCHAR(255),
     author_name VARCHAR(255),
     reason VARCHAR(255), -- spam, toxic, reported, keyword_match
-    ai_confidence DECIMAL(3,2),
+    ai_confidence DECIMAL(3, 2),
     status VARCHAR(50) DEFAULT 'pending', -- pending, approved, rejected, escalated
-    moderated_by UUID REFERENCES users(id),
-    moderated_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    moderated_by UUID REFERENCES users (id),
+    moderated_at TIMESTAMP
+    WITH
+        TIME ZONE,
+        created_at TIMESTAMP
+    WITH
+        TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+
 4. API Architecture
 javascript
 
@@ -332,34 +387,49 @@ class SocialMediaService {
   }
 }
 
-// 2. Queue Service (using Bull)
+/
+/
+2. Queue Service (using Bull)
 const postQueue = new Bull('posts', {
   redis: { port: 6379, host: '127.0.0.1' }
 });
 
-postQueue.process(async (job) => {
-  const { postId } = job.data;
-  await socialMediaService.publishPost(postId);
+postQueue.process(async (job) => { const { postId } = job.data;
+
+await socialMediaService.publishPost (postId);
+
 });
 
-// Schedule posts
+/
+/
+Schedule posts
 async function schedulePost(postId, scheduledTime) {
   const delay = scheduledTime - Date.now();
-  await postQueue.add({ postId }, { delay });
+
+await postQueue.add({ postId }, { delay });
+
 }
 
-// 3. Real-time Service (Socket.io)
+/
+/
+3. Real-time Service (Socket.io)
 io.on('connection', (socket) => {
   socket.on('join-organization', (orgId) => {
     socket.join(`org-${orgId}`);
-  });
-  
-  // Emit updates
-  socket.to(`org-${orgId}`).emit('new-message', message);
-  socket.to(`org-${orgId}`).emit('analytics-update', data);
+
 });
 
-// 4. AI Service
+/
+/
+Emit updates socket.to (`org-${orgId}`).emit ('new-message', message);
+
+socket.to (`org-${orgId}`).emit ('analytics-update', data);
+
+});
+
+/
+/
+4. AI Service
 class AIService {
   async generateCaption(context) {
     const response = await openai.createCompletion({
@@ -367,8 +437,10 @@ class AIService {
       prompt: `Generate social media caption for: ${context}`,
       max_tokens: 200
     });
-    return response.data.choices[0].text;
-  }
+
+return response.data.choices[0].text;
+
+}
   
   async analyzeSentiment(text) {
     // Use OpenAI or dedicated sentiment API
@@ -385,25 +457,32 @@ Copy
 // 1. Authentication Middleware
 const authenticate = async (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Unauthorized' });
-  
-  try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await getUserById(payload.userId);
-    next();
-  } catch (error) {
-    res.status(401).json({ error: 'Invalid token' });
-  }
-};
 
-// 2. Rate Limiting
+if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+try { const payload = jwt.verify(token, process.env.JWT_SECRET);
+
+req.user = await getUserById (payload.userId);
+
+next ();
+
+} catch (error) {
+    res.status(401).json({ error: 'Invalid token' });
+
+} };
+
+/
+/
+2. Rate Limiting
 const rateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
   message: 'Too many requests'
 });
 
-// 3. Input Validation (using Joi)
+/
+/
+3. Input Validation (using Joi)
 const postSchema = Joi.object({
   content: Joi.string().max(5000).required(),
   platforms: Joi.array().items(Joi.string()).min(1).required(),
@@ -414,14 +493,25 @@ const postSchema = Joi.object({
   })).optional()
 });
 
-// 4. Encryption for sensitive data
-const crypto = require('crypto');
+/
+/
+4. Encryption for sensitive data const crypto = require ('crypto');
+
 const algorithm = 'aes-256-gcm';
 
-function encrypt(text) {
-  const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv(algorithm, Buffer.from(process.env.ENCRYPTION_KEY, 'hex'), iv);
-  // ... encryption logic
+function encrypt(text) { const iv = crypto.randomBytes(16);
+
+const cipher = crypto.createCipheriv (
+    algorithm,
+    Buffer.from (
+        process.env.ENCRYPTION_KEY,
+        'hex'
+    ),
+    iv
+);
+/
+/
+... encryption logic
 }
 7. Third-Party Service Integration
 javascript
@@ -436,42 +526,60 @@ async function createSubscription(customerId, priceId) {
     items: [{ price: priceId }],
     trial_period_days: 14
   });
-  return subscription;
+
+return subscription;
+
 }
 
-// 2. Webhook Handlers
+/
+/
+2. Webhook Handlers
 app.post('/webhooks/stripe', async (req, res) => {
   const sig = req.headers['stripe-signature'];
-  const event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-  
-  switch (event.type) {
+
+const event = stripe.webhooks.constructEvent (
+    req.body,
+    sig,
+    process.env.STRIPE_WEBHOOK_SECRET
+);
+
+switch (event.type) {
     case 'subscription.updated':
       await updateOrganizationLimits(event.data.object);
-      break;
-    case 'subscription.deleted':
-      await downgradeOrganization(event.data.object);
-      break;
-  }
-});
 
-// 3. Media Upload Service
-const multer = require('multer');
-const cloudinary = require('cloudinary').v2;
+break;
+
+case 'subscription.deleted':
+      await downgradeOrganization(event.data.object);
+
+break;
+
+} });
+
+/
+/
+3. Media Upload Service const multer = require ('multer');
+
+const cloudinary = require ('cloudinary').v2;
 
 const upload = multer({ 
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4'];
-    cb(null, allowedTypes.includes(file.mimetype));
-  }
-});
+
+cb ( null, allowedTypes.includes (file.mimetype) );
+
+} });
 
 async function uploadToCloudinary(file) {
   const result = await cloudinary.uploader.upload(file.path, {
     resource_type: 'auto',
-    folder: 'vibetribe'
+    folder: 'tribe'
   });
-  return result.secure_url;
+
+return result.secure_url;
+
+
 }
 8. Background Jobs & Cron Tasks
 javascript
@@ -480,31 +588,42 @@ Copy
 // 1. Analytics Sync Job (runs every hour)
 cron.schedule('0 * * * *', async () => {
   const accounts = await getActiveAccounts();
-  for (const account of accounts) {
-    await analyticsQueue.add('sync', { accountId: account.id });
-  }
-});
 
-// 2. Engagement Monitoring (runs every 30 minutes)
+for (const account of accounts) {
+    await analyticsQueue.add('sync', { accountId: account.id });
+
+} });
+
+/
+/
+2. Engagement Monitoring (runs every 30 minutes)
 cron.schedule('*/30 * * * *', async () => {
   const recentPosts = await getRecentPosts();
-  for (const post of recentPosts) {
-    await checkEngagement(post);
-  }
-});
 
-// 3. Community Health Check (daily)
+for (const post of recentPosts) { await checkEngagement(post);
+
+} });
+
+/
+/
+3. Community Health Check (daily)
 cron.schedule('0 0 * * *', async () => {
   const communities = await getAllCommunities();
-  for (const community of communities) {
-    await calculateHealthScore(community);
-  }
-});
 
-// 4. Usage Reset (monthly)
+for (const community of communities) {
+    await calculateHealthScore(community);
+
+} });
+
+/
+/
+4. Usage Reset (monthly)
 cron.schedule('0 0 1 * *', async () => {
   await resetMonthlyUsage();
+
 });
+
+
 9. Error Handling & Monitoring
 javascript
 
@@ -519,20 +638,25 @@ app.use((err, req, res, next) => {
     ip: req.ip,
     user: req.user?.id
   });
-  
-  res.status(err.status || 500).json({
+
+res.status(err.status || 500).json({
     error: process.env.NODE_ENV === 'production' 
       ? 'Something went wrong' 
       : err.message
   });
+
 });
 
-// 2. Sentry Integration
-const Sentry = require('@sentry/node');
+/
+/
+2. Sentry Integration const Sentry = require ('@sentry/node');
+
 Sentry.init({ dsn: process.env.SENTRY_DSN });
 
-// 3. Custom Logger
-const winston = require('winston');
+/
+/
+3. Custom Logger const winston = require ('winston');
+
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.json(),
@@ -541,6 +665,8 @@ const logger = winston.createLogger({
     new winston.transports.File({ filename: 'combined.log' })
   ]
 });
+
+
 10. Deployment Requirements
 yaml
 
@@ -568,7 +694,7 @@ services:
   postgres:
     image: postgres:14
     environment:
-      POSTGRES_DB: vibetribe
+      POSTGRES_DB: tribe
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
@@ -587,7 +713,7 @@ env
 
 Copy
 # Database
-DATABASE_URL=postgresql://user:password@localhost:5432/vibetribe
+DATABASE_URL=postgresql://user:password@localhost:5432/tribe
 REDIS_URL=redis://localhost:6379
 
 # Auth
@@ -613,9 +739,9 @@ CLOUDINARY_URL=
 SENTRY_DSN=
 
 # App Config
-FRONTEND_URL=https://app.vibetribe.com
-API_URL=https://api.vibetribe.com
-WEBHOOK_URL=https://api.vibetribe.com/webhooks
+FRONTEND_URL=https://app.tribe.com
+API_URL=https://api.tribe.com
+WEBHOOK_URL=https://api.tribe.com/webhooks
 12. Testing Strategy
 javascript
 
@@ -628,32 +754,50 @@ describe('PostService', () => {
       platforms: ['twitter'],
       scheduledFor: new Date('2024-12-25')
     });
-    expect(post.status).toBe('scheduled');
-  });
+
+expect (post.status).toBe ('scheduled');
+
 });
 
-// Integration Tests
+});
+
+/
+/
+Integration Tests
 describe('API Endpoints', () => {
   test('POST /api/posts', async () => {
     const response = await request(app)
       .post('/api/posts')
       .set('Authorization', `Bearer ${token}`)
       .send({ content: 'Test', platforms: ['twitter'] });
-    expect(response.status).toBe(201);
-  });
+
+expect (response.status).toBe (201);
+
 });
 
-// E2E Tests (Cypress)
+});
+
+/
+/
+E2E Tests (Cypress)
 describe('Post Creation Flow', () => {
   it('should create and publish a post', () => {
     cy.login();
-    cy.visit('/dashboard/posts/new');
-    cy.get('[data-cy=content]').type('Test post');
-    cy.get('[data-cy=platform-twitter]').click();
-    cy.get('[data-cy=publish]').click();
-    cy.contains('Post published successfully');
-  });
+
+cy.visit ('/dashboard/posts/new');
+
+cy.get ('[data-cy=content]').type ('Test post');
+
+cy.get ('[data-cy=platform-twitter]').click ();
+
+cy.get ('[data-cy=publish]').click ();
+
+cy.contains ('Post published successfully');
+
 });
+
+});
+
 
 Implementation
 Phase 1 : Foundation
@@ -694,4 +838,4 @@ Implement backup strategies
 Launch beta testing
 
 
-This comprehensive backend will support all the features of VibeTribe while being scalable, secure, and maintainable. Would you like me to elaborate on any specific part or help you get started with a particular component?
+This comprehensive backend will support all the features of Tribe while being scalable, secure, and maintainable. Would you like me to elaborate on any specific part or help you get started with a particular component?

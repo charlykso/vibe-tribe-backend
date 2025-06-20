@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐦 Real Twitter OAuth Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f8fa;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #1DA1F2;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .step {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            background: #f7f9fa;
+        }
+        .step h3 {
+            margin-top: 0;
+            color: #14171a;
+        }
+        button {
+            background: #1DA1F2;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            margin: 10px 10px 10px 0;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background: #1991db;
+        }
+        button:disabled {
+            background: #aab8c2;
+            cursor: not-allowed;
+        }
+        .result {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f0f0f0;
+            border-left: 4px solid #1DA1F2;
+        }
+        .success {
+            background: #d4edda;
+            border-left-color: #28a745;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+            color: #721c24;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+            color: #856404;
+        }
+        .auth-url {
+            word-break: break-all;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .oauth-link {
+            display: inline-block;
+            background: #1DA1F2;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 25px;
+            margin: 10px 0;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        .oauth-link:hover {
+            background: #1991db;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-online { background: #28a745; }
+        .status-offline { background: #dc3545; }
+        .status-pending { background: #ffc107; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐦 Real Twitter OAuth Test</h1>
+        
+        <div class="step">
+            <h3>Step 1: Backend Health Check</h3>
+            <p>First, let's make sure our OAuth backend is running with real Twitter credentials.</p>
+            <button onclick="testBackendHealth()">🏥 Check Backend Health</button>
+            <div id="health-status">
+                <span class="status-indicator status-pending"></span>Click to test
+            </div>
+        </div>
+        
+        <div class="step">
+            <h3>Step 2: Twitter Configuration</h3>
+            <p>Verify that real Twitter credentials are loaded (not demo mode).</p>
+            <button onclick="testTwitterConfig()" id="config-btn" disabled>⚙️ Check Twitter Config</button>
+            <div id="config-status">
+                <span class="status-indicator status-pending"></span>Complete Step 1 first
+            </div>
+        </div>
+        
+        <div class="step">
+            <h3>Step 3: Generate OAuth URL</h3>
+            <p>Generate a real Twitter authorization URL with your credentials.</p>
+            <button onclick="generateOAuthURL()" id="oauth-btn" disabled>🔗 Generate OAuth URL</button>
+            <div id="oauth-status">
+                <span class="status-indicator status-pending"></span>Complete Step 2 first
+            </div>
+        </div>
+        
+        <div class="step">
+            <h3>Step 4: Test Authorization Flow</h3>
+            <p>Click the generated OAuth URL to test the real Twitter authorization flow.</p>
+            <div id="auth-flow-status">
+                <span class="status-indicator status-pending"></span>Complete Step 3 first
+            </div>
+        </div>
+        
+        <div id="results" class="result">
+            Welcome! Click "Check Backend Health" to start testing your real Twitter OAuth implementation.
+        </div>
+    </div>
+
+    <script>
+        let currentState = null;
+        let currentCodeVerifier = null;
+
+        function showResult(message, type = 'info') {
+            const div = document.getElementById('results');
+            div.className = `result ${type}`;
+            div.innerHTML = message;
+        }
+
+        function updateStatus(elementId, status, message) {
+            const element = document.getElementById(elementId);
+            const indicator = element.querySelector('.status-indicator');
+            
+            // Remove all status classes
+            indicator.classList.remove('status-online', 'status-offline', 'status-pending');
+            
+            // Add new status
+            indicator.classList.add(`status-${status}`);
+            
+            // Update text
+            const textNode = element.childNodes[element.childNodes.length - 1];
+            textNode.textContent = message;
+        }
+
+        async function testBackendHealth() {
+            try {
+                showResult('🔄 Testing backend health...', 'info');
+                
+                const response = await fetch('http://localhost:3001/health');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    updateStatus('health-status', 'online', 'Backend is running ✅');
+                    document.getElementById('config-btn').disabled = false;
+                    
+                    showResult(`✅ <strong>Backend Health Check Passed!</strong><br>
+                        Status: ${data.status}<br>
+                        Environment: ${data.environment}<br>
+                        Timestamp: ${data.timestamp}<br><br>
+                        Ready to test Twitter configuration.`, 'success');
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                updateStatus('health-status', 'offline', 'Backend failed ❌');
+                showResult(`❌ <strong>Backend Health Check Failed!</strong><br>
+                    Error: ${error.message}<br><br>
+                    Make sure the OAuth backend is running on port 3001.`, 'error');
+            }
+        }
+
+        async function testTwitterConfig() {
+            try {
+                showResult('🔄 Testing Twitter configuration...', 'info');
+                
+                const response = await fetch('http://localhost:3001/api/v1/oauth/config/twitter');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    if (data.demo_mode) {
+                        updateStatus('config-status', 'offline', 'Demo mode (no real credentials) ⚠️');
+                        showResult(`⚠️ <strong>Twitter Configuration Warning!</strong><br>
+                            Demo Mode: ${data.demo_mode}<br>
+                            Client ID: ${data.client_id}<br><br>
+                            You're in demo mode. Real Twitter credentials are not loaded.`, 'warning');
+                    } else {
+                        updateStatus('config-status', 'online', 'Real credentials loaded ✅');
+                        document.getElementById('oauth-btn').disabled = false;
+                        
+                        showResult(`✅ <strong>Twitter Configuration Success!</strong><br>
+                            Demo Mode: ${data.demo_mode} (using real credentials)<br>
+                            Client ID: ${data.client_id}<br>
+                            Redirect URI: ${data.redirect_uri}<br>
+                            Configured: ${data.configured ? 'Yes' : 'No'}<br><br>
+                            Ready to generate OAuth URL.`, 'success');
+                    }
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                updateStatus('config-status', 'offline', 'Configuration failed ❌');
+                showResult(`❌ <strong>Twitter Configuration Failed!</strong><br>
+                    Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function generateOAuthURL() {
+            try {
+                showResult('🔄 Generating OAuth URL...', 'info');
+                
+                const response = await fetch('http://localhost:3001/api/v1/oauth/initiate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ platform: 'twitter' })
+                });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentState = data.state;
+                    currentCodeVerifier = data.codeVerifier;
+                    
+                    const authUrl = data.authUrl;
+                    
+                    updateStatus('oauth-status', 'online', 'OAuth URL generated ✅');
+                    
+                    // Update Step 4
+                    const authFlowDiv = document.getElementById('auth-flow-status');
+                    authFlowDiv.innerHTML = `
+                        <span class="status-indicator status-online"></span>Ready to test authorization ✅<br>
+                        <a href="${authUrl}" target="_blank" class="oauth-link">
+                            🐦 Open Twitter Authorization
+                        </a><br>
+                        <small>This will open the real Twitter OAuth consent page</small>
+                    `;
+                    
+                    showResult(`✅ <strong>OAuth URL Generated Successfully!</strong><br>
+                        Demo Mode: ${data.demo_mode}<br>
+                        State: ${data.state}<br>
+                        Code Verifier: ${data.codeVerifier}<br><br>
+                        <div class="auth-url">${authUrl}</div>
+                        <br>
+                        Click the "🐦 Open Twitter Authorization" button above to test the real Twitter OAuth flow!`, 'success');
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${data.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                updateStatus('oauth-status', 'offline', 'OAuth generation failed ❌');
+                showResult(`❌ <strong>OAuth URL Generation Failed!</strong><br>
+                    Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === '1') {
+                e.preventDefault();
+                testBackendHealth();
+            } else if (e.ctrlKey && e.key === '2' && !document.getElementById('config-btn').disabled) {
+                e.preventDefault();
+                testTwitterConfig();
+            } else if (e.ctrlKey && e.key === '3' && !document.getElementById('oauth-btn').disabled) {
+                e.preventDefault();
+                generateOAuthURL();
+            }
+        });
+
+        // Show keyboard shortcuts info
+        setTimeout(() => {
+            showResult(`<strong>Keyboard Shortcuts:</strong><br>
+                Ctrl+1: Check Backend Health<br>
+                Ctrl+2: Check Twitter Config<br>
+                Ctrl+3: Generate OAuth URL<br><br>
+                Click "🏥 Check Backend Health" to begin testing.`, 'info');
+        }, 1000);
+    </script>
+</body>
+</html>

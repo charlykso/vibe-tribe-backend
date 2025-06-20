@@ -43,7 +43,7 @@ export const OnboardingFlow: React.FC = () => {
   const steps: OnboardingStep[] = [
     {
       id: 'welcome',
-      title: 'Welcome to VibeTribe Manager!',
+      title: 'Welcome to Tribe Manager!',
       description: 'Let\'s get you set up in just a few minutes',
       icon: <Rocket className="w-8 h-8 text-blue-500" />,
       component: (
@@ -52,7 +52,7 @@ export const OnboardingFlow: React.FC = () => {
             <Rocket className="w-12 h-12 text-white" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold mb-2">Welcome to VibeTribe Manager!</h2>
+            <h2 className="text-2xl font-bold mb-2">Welcome to Tribe Manager!</h2>
             <p className="text-gray-600 dark:text-gray-400">
               The all-in-one platform for managing your social media presence and community engagement.
             </p>
@@ -285,7 +285,7 @@ export const OnboardingFlow: React.FC = () => {
     } else {
       // Complete onboarding
       toast({
-        title: "Welcome to VibeTribe!",
+        title: "Welcome to Tribe!",
         description: "Your account setup is complete. Let's get started!",
       });
     }

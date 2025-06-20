@@ -1,4 +1,4 @@
-// Production Backend for VibeTribe Registration
+// Production Backend for Tribe Registration
 const express = require('express')
 const cors = require('cors')
 const bcrypt = require('bcryptjs')
@@ -406,7 +406,7 @@ app.use((err, req, res, next) => {
 
 // Start server
 async function startServer() {
-  console.log('🚀 Starting VibeTribe Production Backend...')
+  console.log('🚀 Starting Tribe Production Backend...')
 
   // Initialize Firebase
   const firebaseConnected = await initializeFirebase()
@@ -416,7 +416,7 @@ async function startServer() {
   }
 
   const server = app.listen(PORT, () => {
-    console.log(`🚀 VibeTribe Backend running on http://localhost:${PORT}`)
+    console.log(`🚀 Tribe Backend running on http://localhost:${PORT}`)
     console.log(`📊 Health check: http://localhost:${PORT}/health`)
     console.log(`🔗 API Health: http://localhost:${PORT}/api/v1/health`)
     console.log(

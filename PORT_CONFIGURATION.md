@@ -1,8 +1,12 @@
-# VibeTribe Port Configuration
+# Tribe Port Configuration
+
+## 🎯 **Standardized Ports**
+
+To ensure consistent development experience and avoid port conflicts, Tribe now uses **standardized ports**:eTribe Port Configuration
 
 ## 🎯 **Standardized Port Setup**
 
-To ensure consistent development experience and avoid port conflicts, VibeTribe now uses **standardized ports**:
+To ensure consistent development experience and avoid port conflicts, Tribe now uses **standardized ports**:
 
 ### **📍 Port Assignments**
 

@@ -1,4 +1,4 @@
-# VibeTribe - Remaining Tasks Priority List
+# Tribe - Remaining Tasks Priority List
 
 _Items that don't require third-party services, arranged by priority_
 

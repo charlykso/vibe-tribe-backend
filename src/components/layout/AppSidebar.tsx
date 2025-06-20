@@ -128,9 +128,8 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 w-64 min-w-64">
       <SidebarContent className="p-4 overflow-y-auto">
-        <div className="mb-6">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1 truncate">SocialTribe</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-300 truncate">AI-Powered Social Media Manager</p>
+        <div className="mb-6 flex items-center gap-2">
+          <img src="/Tribe-SVG.svg" alt="VibeTribe" className="h-8 w-auto" />
         </div>
 
         <SidebarGroup>

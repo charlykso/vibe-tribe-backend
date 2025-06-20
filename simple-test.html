@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Twitter OAuth Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        button { padding: 10px 20px; margin: 10px; background: #1DA1F2; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .result { margin: 20px 0; padding: 15px; background: #f0f0f0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>🐦 Simple Twitter OAuth Test</h1>
+    
+    <div>
+        <h3>Step 1: Test Backend Health</h3>
+        <button onclick="testLocalBackend()">Test Local Backend</button>
+        <button onclick="testProductionBackend()">Test Production Backend</button>
+    </div>
+    
+    <div>
+        <h3>Step 2: Test Twitter OAuth</h3>
+        <button onclick="testTwitterConfig()">Test Twitter Config</button>
+        <button onclick="testOAuthInitiate()">Test OAuth Initiate</button>
+    </div>
+    
+    <div id="results" class="result">
+        Click a button to start testing...
+    </div>
+
+    <script>
+        function showResult(message, isSuccess = true) {
+            const div = document.getElementById('results');
+            div.className = `result ${isSuccess ? 'success' : 'error'}`;
+            div.innerHTML = message;
+        }
+
+        async function testLocalBackend() {
+            try {
+                showResult('🔄 Testing local backend...', true);
+                const response = await fetch('http://localhost:3001/health');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult(`✅ Local Backend OK: ${data.message}<br>Status: ${data.status}<br>Time: ${data.timestamp}`, true);
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }            } catch (error) {
+                showResult(`❌ Local Backend Failed: ${error.message}`, false);
+            }
+        }
+
+        async function testProductionBackend() {
+            try {
+                showResult('🔄 Testing production backend...', true);
+                
+                // Try with CORS first
+                try {
+                    const response = await fetch('https://vibe-tribe-backend-8yvp.onrender.com/health');
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        showResult(`✅ Production Backend OK<br>Status: ${data.status}<br>Time: ${data.timestamp}<br>Uptime: ${data.uptime}s`, true);
+                        return;
+                    }
+                } catch (corsError) {
+                    console.log('CORS error, trying alternative method:', corsError);
+                }
+                
+                // If CORS fails, show a manual test instruction
+                showResult(`⚠️ Production Backend CORS Issue<br><br>
+                    The production backend is blocking requests from localhost:8082 due to CORS policy.<br><br>
+                    <strong>Manual Test:</strong><br>
+                    Open <a href="https://vibe-tribe-backend-8yvp.onrender.com/health" target="_blank">
+                    https://vibe-tribe-backend-8yvp.onrender.com/health</a> in a new tab.<br><br>
+                    If it shows a JSON response with "status": "OK", then the production backend is working fine.
+                    The issue is just CORS configuration.`, true);
+                
+            } catch (error) {
+                showResult(`❌ Production Backend Failed: ${error.message}`, false);
+            }
+        }
+
+        async function testTwitterConfig() {
+            try {
+                showResult('🔄 Testing Twitter configuration...', true);
+                const response = await fetch('http://localhost:3001/api/v1/oauth/config/twitter');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult(`✅ Twitter Config OK<br>Client ID: ${data.client_id}<br>Demo Mode: ${data.demo_mode}<br>Configured: ${data.configured}`, true);
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                showResult(`❌ Twitter Config Failed: ${error.message}`, false);
+            }
+        }        async function testOAuthInitiate() {
+            try {
+                showResult('🔄 Testing OAuth initiation...', true);
+                const response = await fetch('http://localhost:3001/api/v1/oauth/initiate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ platform: 'twitter' })
+                });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const fullUrl = data.authUrl;
+                    const shortUrl = fullUrl.length > 100 ? fullUrl.substring(0, 100) + '...' : fullUrl;
+                    
+                    showResult(`✅ OAuth Initiate OK<br>
+                        <strong>Demo Mode:</strong> ${data.demo_mode}<br>
+                        <strong>State:</strong> ${data.state}<br>
+                        <strong>Code Verifier:</strong> ${data.codeVerifier}<br>
+                        <strong>Auth URL:</strong> ${shortUrl}<br><br>
+                        <a href="${fullUrl}" target="_blank" style="background: #1DA1F2; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px;">
+                            🐦 Open Twitter Authorization
+                        </a><br><br>
+                        <small>Click the link above to see the real Twitter OAuth page</small>`, true);
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${data.error}`);
+                }
+            } catch (error) {
+                showResult(`❌ OAuth Initiate Failed: ${error.message}`, false);
+            }
+        }
+    </script>
+</body>
+</html>

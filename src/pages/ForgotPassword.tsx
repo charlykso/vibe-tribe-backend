@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ArrowLeft, Loader2, Mail } from 'lucide-react';
 import { useAuthContext } from '@/components/auth/AuthProvider';
+import { ResetPasswordData } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,10 +30,13 @@ export const ForgotPassword: React.FC = () => {
   } = useForm<ForgotPasswordFormData>({
     resolver: zodResolver(forgotPasswordSchema),
   });
-
   const onSubmit = async (data: ForgotPasswordFormData) => {
     clearError();
-    const result = await resetPassword(data);
+    // Ensure the data matches ResetPasswordData interface
+    const resetData: ResetPasswordData = {
+      email: data.email,
+    };
+    const result = await resetPassword(resetData);
 
     if (result.success) {
       setEmailSent(true);
@@ -89,10 +93,8 @@ export const ForgotPassword: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 px-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <div className="flex items-center justify-center mb-4">
-            <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg"></div>
-            <span className="ml-2 text-2xl font-bold">SocialTribe</span>
+        <CardHeader className="space-y-1">          <div className="flex items-center justify-center mb-4">
+            <img src="/Tribe-SVG.svg" alt="Tribe" className="h-12 w-auto" />
           </div>
           <CardTitle className="text-2xl text-center">Reset your password</CardTitle>
           <CardDescription className="text-center">

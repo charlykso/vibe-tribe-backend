@@ -1,4 +1,4 @@
-# OAuth Setup Guide for VibeTribe
+# OAuth Setup Guide for Tribe
 
 This guide will help you set up real OAuth credentials for all social media platforms.
 
@@ -9,7 +9,7 @@ This guide will help you set up real OAuth credentials for all social media plat
 1. Go to [Facebook Developers](https://developers.facebook.com/)
 2. Click "Create App" → "Business" → "Next"
 3. Enter app details:
-   - **App Name**: VibeTribe Manager
+   - **App Name**: Tribe Manager
    - **App Contact Email**: your-email@example.com
 4. Click "Create App"
 
@@ -81,7 +81,7 @@ Instagram uses Facebook's OAuth system, so you'll use the same app.
 1. Go to [LinkedIn Developers](https://www.linkedin.com/developers/)
 2. Click "Create App"
 3. Fill in details:
-   - **App Name**: VibeTribe Manager
+   - **App Name**: Tribe Manager
    - **LinkedIn Page**: Your company page (or create one)
    - **Privacy Policy URL**: Your privacy policy
    - **App Logo**: Upload a logo
@@ -118,7 +118,7 @@ Instagram uses Facebook's OAuth system, so you'll use the same app.
 1. Go to [Twitter Developer Portal](https://developer.twitter.com/)
 2. Apply for a developer account if needed
 3. Create a new project/app:
-   - **App Name**: VibeTribe Manager
+   - **App Name**: Tribe Manager
    - **Use Case**: Social media management tool
 
 ### Step 2: Configure OAuth 2.0

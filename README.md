@@ -1,6 +1,6 @@
-# SocialTribe - Social Media Management Platform
+# Tribe - Social Media Management Platform
 
-SocialTribe is a comprehensive social media management platform that enables teams to create, schedule, and manage content across multiple social media platforms from a unified dashboard.
+Tribe is a comprehensive social media management platform that enables teams to create, schedule, and manage content across multiple social media platforms from a unified dashboard.
 
 ## 📖 Quick Links
 
@@ -145,7 +145,7 @@ npm run server:dev   # Backend only
 
 ## ⚙️ Environment Configuration
 
-SocialTribe uses a flexible credential system that supports both individual environment variables (development) and Base64 encoded credentials (production).
+Tribe uses a flexible credential system that supports both individual environment variables (development) and Base64 encoded credentials (production).
 
 ### 🛠️ Development Setup (Individual Variables)
 

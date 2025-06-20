@@ -16,10 +16,15 @@ import { requestLogger } from './middleware/requestLogger.js';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// CORS configuration
+const corsOrigins = process.env.CORS_ORIGIN 
+  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+  : ["http://localhost:8080"];
+
 // Basic middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:8080',
+  origin: corsOrigins,
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
