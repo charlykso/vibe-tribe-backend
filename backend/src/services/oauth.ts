@@ -391,19 +391,6 @@ export class TwitterOAuthService {
         state: state.substring(0, 20) + '...'
       });
 
-      // If using demo credentials, redirect to demo OAuth page
-      if (this.config.clientId === 'demo_twitter_client_id') {
-        const params = new URLSearchParams({
-          platform: 'twitter',
-          state,
-          redirect_uri: this.config.redirectUri
-        });
-        return {
-          url: `http://localhost:8081/oauth/demo?${params.toString()}`,
-          codeVerifier: 'demo_code_verifier'
-        };
-      }
-
       // Validate credentials before generating URL
       if (!this.config.clientId || !this.config.clientSecret) {
         throw new Error('Twitter OAuth credentials not configured');
@@ -449,26 +436,6 @@ export class TwitterOAuthService {
         clientId: this.config.clientId ? `${this.config.clientId.substring(0, 10)}...` : 'missing',
         clientSecret: this.config.clientSecret ? 'present' : 'missing'
       });
-
-      // Handle demo OAuth codes
-      if (code.startsWith('demo_code_twitter_')) {
-        const account: Partial<SocialAccount> = {
-          platform: 'twitter',
-          platform_user_id: 'demo_twitter_user_789',
-          username: '@demo_user',
-          display_name: 'Demo User',
-          avatar_url: '/api/placeholder/40/40',
-          access_token: `demo_twitter_token_${Date.now()}`,
-          refresh_token: `demo_twitter_refresh_${Date.now()}`,
-          permissions: ['tweet.read', 'tweet.write', 'users.read'],
-          metadata: {
-            followers_count: 1850,
-            following_count: 420,
-            tweet_count: 156
-          }
-        };
-        return { success: true, account };
-      }
 
       // Validate required parameters
       if (!code) {
@@ -617,16 +584,6 @@ export class LinkedInOAuthService {
 
   // Generate OAuth URL for LinkedIn
   generateAuthUrl(state: string): string {
-    // If using demo credentials, redirect to demo OAuth page
-    if (this.config.clientId === 'demo_linkedin_client_id') {
-      const params = new URLSearchParams({
-        platform: 'linkedin',
-        state,
-        redirect_uri: this.config.redirectUri
-      });
-      return `http://localhost:8081/oauth/demo?${params.toString()}`;
-    }
-
     const params = new URLSearchParams({
       response_type: 'code',
       client_id: this.config.clientId,
@@ -641,26 +598,6 @@ export class LinkedInOAuthService {
   // Handle OAuth callback
   async handleCallback(code: string): Promise<OAuthResult> {
     try {
-      // Handle demo OAuth codes
-      if (code.startsWith('demo_code_linkedin_')) {
-        const account: Partial<SocialAccount> = {
-          platform: 'linkedin',
-          platform_user_id: 'demo_linkedin_user_101',
-          username: 'demo-user',
-          display_name: 'Demo User',
-          avatar_url: '/api/placeholder/40/40',
-          access_token: `demo_linkedin_token_${Date.now()}`,
-          permissions: ['r_liteprofile', 'r_emailaddress', 'w_member_social'],
-          metadata: {
-            id: 'demo_linkedin_user_101',
-            localizedFirstName: 'Demo',
-            localizedLastName: 'User',
-            followers_count: 850
-          }
-        };
-        return { success: true, account };
-      }
-
       // Exchange code for access token
       const tokenResponse = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
         method: 'POST',
@@ -803,16 +740,6 @@ export class FacebookOAuthService {
 
   // Generate OAuth URL for Facebook
   generateAuthUrl(state: string): string {
-    // If using demo credentials, redirect to demo OAuth page
-    if (this.config.clientId === 'demo_facebook_app_id') {
-      const params = new URLSearchParams({
-        platform: 'facebook',
-        state,
-        redirect_uri: this.config.redirectUri
-      });
-      return `http://localhost:8081/oauth/demo?${params.toString()}`;
-    }
-
     const params = new URLSearchParams({
       client_id: this.config.clientId,
       redirect_uri: this.config.redirectUri,
@@ -827,25 +754,6 @@ export class FacebookOAuthService {
   // Handle OAuth callback
   async handleCallback(code: string): Promise<OAuthResult> {
     try {
-      // Handle demo OAuth codes
-      if (code.startsWith('demo_code_facebook_')) {
-        const account: Partial<SocialAccount> = {
-          platform: 'facebook',
-          platform_user_id: 'demo_facebook_user_123',
-          username: 'demo.user',
-          display_name: 'Demo User',
-          avatar_url: '/api/placeholder/40/40',
-          access_token: `demo_facebook_token_${Date.now()}`,
-          permissions: ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts'],
-          metadata: {
-            id: 'demo_facebook_user_123',
-            name: 'Demo User',
-            followers_count: 1250
-          }
-        };
-        return { success: true, account };
-      }
-
       // Exchange code for access token
       const tokenResponse = await fetch(
         `https://graph.facebook.com/v18.0/oauth/access_token?` +
@@ -942,16 +850,6 @@ export class InstagramOAuthService {
 
   // Generate OAuth URL for Instagram
   generateAuthUrl(state: string): string {
-    // If using demo credentials, redirect to demo OAuth page
-    if (this.config.clientId === 'demo_instagram_client_id') {
-      const params = new URLSearchParams({
-        platform: 'instagram',
-        state,
-        redirect_uri: this.config.redirectUri
-      });
-      return `http://localhost:8081/oauth/demo?${params.toString()}`;
-    }
-
     const params = new URLSearchParams({
       client_id: this.config.clientId,
       redirect_uri: this.config.redirectUri,
@@ -966,25 +864,6 @@ export class InstagramOAuthService {
   // Handle OAuth callback
   async handleCallback(code: string): Promise<OAuthResult> {
     try {
-      // Handle demo OAuth codes
-      if (code.startsWith('demo_code_instagram_')) {
-        const account: Partial<SocialAccount> = {
-          platform: 'instagram',
-          platform_user_id: 'demo_instagram_user_456',
-          username: '@demo_user',
-          display_name: 'Demo User',
-          avatar_url: '/api/placeholder/40/40',
-          access_token: `demo_instagram_token_${Date.now()}`,
-          permissions: ['user_profile', 'user_media'],
-          metadata: {
-            id: 'demo_instagram_user_456',
-            username: '@demo_user',
-            followers_count: 2500
-          }
-        };
-        return { success: true, account };
-      }
-
       // Exchange code for access token
       const tokenResponse = await fetch('https://api.instagram.com/oauth/access_token', {
         method: 'POST',
