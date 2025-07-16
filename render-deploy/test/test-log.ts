@@ -1,0 +1,1 @@
+console.log('✅ Minimal TypeScript test file ran successfully!'); 

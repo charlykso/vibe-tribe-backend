@@ -19,33 +19,39 @@ const connectAccountSchema = z.object({
 });
 // GET /api/v1/social-accounts
 router.get('/', asyncHandler(async (req, res) => {
-    const firestore = getFirestoreClient();
-    // Get social accounts for the organization
-    const snapshot = await firestore
-        .collection('social_accounts')
-        .where('organization_id', '==', req.user.organization_id)
-        .orderBy('created_at', 'desc')
-        .get();
-    const accounts = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-    }));
-    // Return sanitized account data (without sensitive tokens)
-    const sanitizedAccounts = accounts.map(account => ({
-        id: account.id,
-        platform: account.platform,
-        platform_user_id: account.platform_user_id,
-        username: account.username,
-        display_name: account.display_name,
-        avatar_url: account.avatar_url,
-        permissions: account.permissions,
-        is_active: account.is_active,
-        last_sync_at: account.last_sync_at,
-        created_at: account.created_at
-    }));
-    res.json({
-        accounts: sanitizedAccounts
-    });
+    console.log('📋 GET /api/v1/social-accounts called');
+    console.log('👤 User:', req.user?.id, 'Org:', req.user?.organization_id);
+    try {
+        // Simple test first - just return success
+        console.log('✅ Endpoint reached successfully');
+        const firestore = getFirestoreClient();
+        console.log('✅ Firestore client obtained');
+        // Get social accounts for the organization
+        console.log('🔍 Querying social accounts for org:', req.user.organization_id);
+        const snapshot = await firestore
+            .collection('social_accounts')
+            .where('organization_id', '==', req.user.organization_id)
+            .get();
+        console.log('📊 Found', snapshot.size, 'social accounts');
+        const accounts = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        console.log('✅ Successfully processed accounts');
+        res.json({
+            success: true,
+            accounts,
+            count: accounts.length
+        });
+    }
+    catch (firestoreError) {
+        console.error('❌ Firestore error:', firestoreError);
+        res.status(500).json({
+            error: 'Database error',
+            message: firestoreError.message,
+            details: firestoreError
+        });
+    }
 }));
 // GET /api/v1/social-accounts/:id
 router.get('/:id', asyncHandler(async (req, res) => {

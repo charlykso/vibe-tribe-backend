@@ -1,0 +1,1 @@
+console.log('✅ Minimal JavaScript test file ran successfully!'); 

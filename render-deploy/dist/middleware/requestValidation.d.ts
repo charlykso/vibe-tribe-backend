@@ -14,20 +14,20 @@ export declare function validateRequest(schema: ValidationSchema): (req: Request
  * Common validation schemas
  */
 export declare const commonSchemas: {
-    objectId: Joi.StringSchema<string>;
-    email: Joi.StringSchema<string>;
-    password: Joi.StringSchema<string>;
-    username: Joi.StringSchema<string>;
-    url: Joi.StringSchema<string>;
+    objectId: any;
+    email: any;
+    password: any;
+    username: any;
+    url: any;
     pagination: {
-        page: Joi.NumberSchema<number>;
-        limit: Joi.NumberSchema<number>;
-        sort: Joi.StringSchema<string>;
-        sortBy: Joi.StringSchema<string>;
+        page: any;
+        limit: any;
+        sort: any;
+        sortBy: any;
     };
     dateRange: {
-        startDate: Joi.DateSchema<Date>;
-        endDate: Joi.DateSchema<Date>;
+        startDate: any;
+        endDate: any;
     };
 };
 /**
@@ -36,56 +36,56 @@ export declare const commonSchemas: {
 export declare const validationSchemas: {
     auth: {
         register: {
-            body: Joi.ObjectSchema<any>;
+            body: any;
         };
         login: {
-            body: Joi.ObjectSchema<any>;
+            body: any;
         };
         resetPassword: {
-            body: Joi.ObjectSchema<any>;
+            body: any;
         };
         changePassword: {
-            body: Joi.ObjectSchema<any>;
+            body: any;
         };
     };
     users: {
         updateProfile: {
-            body: Joi.ObjectSchema<any>;
+            body: any;
         };
         getUserById: {
-            params: Joi.ObjectSchema<any>;
+            params: any;
         };
     };
     posts: {
         create: {
-            body: Joi.ObjectSchema<any>;
+            body: any;
         };
         update: {
-            params: Joi.ObjectSchema<any>;
-            body: Joi.ObjectSchema<any>;
+            params: any;
+            body: any;
         };
         list: {
-            query: Joi.ObjectSchema<any>;
+            query: any;
         };
     };
     media: {
         upload: {
-            body: Joi.ObjectSchema<any>;
+            body: any;
         };
     };
     socialAccounts: {
         connect: {
-            body: Joi.ObjectSchema<any>;
+            body: any;
         };
     };
     analytics: {
         getMetrics: {
-            query: Joi.ObjectSchema<any>;
+            query: any;
         };
     };
     communities: {
         create: {
-            body: Joi.ObjectSchema<any>;
+            body: any;
         };
     };
 };

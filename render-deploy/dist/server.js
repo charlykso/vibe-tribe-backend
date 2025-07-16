@@ -32,19 +32,22 @@ import { initializeWebSocket } from './services/websocket.js';
 import { initializeQueues, shutdownQueues } from './services/queue.js';
 import { initializeCronJobs, stopCronJobs } from './services/cron.js';
 const app = express();
-const server = createServer(app);
-const io = new SocketIOServer(server, {
-    cors: {
-        origin: process.env.CORS_ORIGIN || "http://localhost:8080",
-        methods: ["GET", "POST"]
-    }
-});
 const PORT = process.env.PORT || 3001;
 // Enhanced security middleware
 app.use(...comprehensiveSecurityHeaders());
 // CORS configuration
+const corsOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+    : ["http://localhost:8080"];
+const server = createServer(app);
+const io = new SocketIOServer(server, {
+    cors: {
+        origin: corsOrigins,
+        methods: ["GET", "POST"]
+    }
+});
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:8080",
+    origin: corsOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -69,6 +72,15 @@ app.get('/health', (req, res) => {
         environment: process.env.NODE_ENV || 'development'
     });
 });
+// Environment variables check endpoint (for debugging) - temporarily disabled due to TypeScript issues
+// app.get('/env-check', (req, res) => {
+//   // Only allow with special header for security
+//   const hasDebugHeader = req.headers['x-debug-token'] === 'check-env-vars-2024';
+//   if (!hasDebugHeader) {
+//     return res.status(403).json({ error: 'Environment check requires debug token' });
+//   }
+//   res.json({ message: 'Environment check endpoint temporarily disabled' });
+// });
 // Development endpoint to clear rate limits
 if (process.env.NODE_ENV !== 'production') {
     app.post('/dev/clear-rate-limits', (req, res) => {
