@@ -131,38 +131,64 @@ setInterval(async () => {
 
 // POST /api/v1/oauth/initiate
 // Initiate OAuth flow for a platform (requires authentication)
-router.post('/initiate', 
+router.post('/initiate',
   authMiddleware,
   ...oauthSecurityMiddleware.initiate,
   asyncHandler(async (req: AuthenticatedRequest, res) => {
+    console.log('🚀 OAuth initiate called:', {
+      platform: req.body?.platform,
+      user: req.user?.id,
+      organization: req.user?.organization_id,
+      body: req.body,
+      headers: {
+        authorization: req.headers.authorization ? 'present' : 'missing',
+        contentType: req.headers['content-type']
+      }
+    });
+
     const validation = initiateOAuthSchema.safeParse(req.body);
 
     if (!validation.success) {
+      console.error('❌ OAuth initiate validation failed:', validation.error.errors);
       throw new ValidationError('Validation failed', validation.error.errors);
-    }    const { platform, returnUrl } = validation.data;
+    }
+
+    const { platform, returnUrl } = validation.data;
     const user = req.user;
 
+    console.log('✅ OAuth initiate validation passed:', { platform, userId: user.id });
+
     if (!user.organization_id) {
+      console.error('❌ User missing organization_id:', user);
       throw new UnauthorizedError('User must belong to an organization');
     }
 
     try {
+      console.log('🔐 Generating secure state for OAuth...');
       // Generate secure state parameter using enhanced security
       const state = generateSecureState(user.id, user.organization_id);
-      
+      console.log('✅ State generated:', state);
+
+      console.log('🏭 Getting OAuth service for platform:', platform);
       // Get OAuth service for platform
       const oauthService = OAuthServiceFactory.getService(platform);
-      
+      console.log('✅ OAuth service obtained for:', platform);
+
       let authUrl: string;
       let codeVerifier: string | undefined;
 
+      console.log('🔗 Generating auth URL for platform:', platform);
       if (platform === 'twitter') {
         const result = await (oauthService as any).generateAuthUrl(state);
         authUrl = result.url;
         codeVerifier = result.codeVerifier;
+        console.log('✅ Twitter auth URL generated');
       } else {
         authUrl = (oauthService as any).generateAuthUrl(state);
+        console.log('✅ Auth URL generated for:', platform);
       }
+
+      console.log('🔗 Generated auth URL:', authUrl.substring(0, 100) + '...');
 
       // Store state information in Redis with enhanced security
       await storeOAuthState(state, {
@@ -587,10 +613,15 @@ router.get('/twitter/callback', asyncHandler(async (req, res) => {
     if (!stateData) {
       console.error('❌ Twitter OAuth state not found:', state);
 
-      // Check if we have any states in the database
-      const firestore = getFirestoreClient();
-      const allStates = await firestore.collection('oauth_states').get();
-      console.log('📊 Available OAuth states in database:', allStates.size);
+      // Check Redis for debugging
+      try {
+        const { redis, getRedisKey, REDIS_PREFIX } = await import('../services/redis.js');
+        const allKeys = await redis.keys(`${REDIS_PREFIX.OAUTH_STATE}*`);
+        console.log('📊 Available OAuth states in Redis:', allKeys.length);
+        console.log('🔍 Redis keys:', allKeys.map(key => key.replace(REDIS_PREFIX.OAUTH_STATE, '')));
+      } catch (redisError) {
+        console.error('❌ Error checking Redis:', redisError);
+      }
 
       return res.json({
         error: 'Access denied. No token provided.',
@@ -598,8 +629,7 @@ router.get('/twitter/callback', asyncHandler(async (req, res) => {
         message: 'Invalid or expired OAuth state',
         details: {
           state,
-          message: 'State not found in database or expired',
-          availableStates: allStates.size,
+          message: 'State not found in Redis or expired',
           timestamp: new Date().toISOString()
         }
       });
@@ -706,12 +736,74 @@ router.get('/twitter/callback', asyncHandler(async (req, res) => {
     }
 
     // Redirect to success page
-    const successUrl = `${process.env.FRONTEND_URL}/dashboard/community/platforms?success=twitter_connected&account=${accountData.username}`;
-    res.redirect(successUrl);
+    // If the request came from ngrok, redirect to a special success page that handles the cross-origin redirect
+    const isNgrokRequest = req.get('host')?.includes('ngrok');
+
+    if (isNgrokRequest) {
+      // Return a simple HTML page that redirects to localhost frontend
+      const redirectHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Twitter Connected Successfully</title>
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+            .success { color: #10b981; font-size: 24px; margin-bottom: 20px; }
+            .loading { color: #6b7280; }
+          </style>
+        </head>
+        <body>
+          <div class="success">✅ Twitter Account Connected Successfully!</div>
+          <div class="loading">Redirecting you back to the app...</div>
+          <script>
+            // Redirect to localhost frontend
+            setTimeout(() => {
+              window.location.href = '${process.env.FRONTEND_URL}/dashboard/community/platforms?success=twitter_connected&account=${encodeURIComponent(accountData.username)}';
+            }, 2000);
+          </script>
+        </body>
+        </html>
+      `;
+      return res.send(redirectHtml);
+    } else {
+      // Direct redirect for localhost requests
+      const successUrl = `${process.env.FRONTEND_URL}/dashboard/community/platforms?success=twitter_connected&account=${accountData.username}`;
+      res.redirect(successUrl);
+    }
 
   } catch (error) {
     console.error('❌ Twitter OAuth callback error:', error);
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=callback_failed`);
+
+    // Handle ngrok context for error redirects too
+    const isNgrokRequest = req.get('host')?.includes('ngrok');
+
+    if (isNgrokRequest) {
+      const errorHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Twitter Connection Failed</title>
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+            .error { color: #ef4444; font-size: 24px; margin-bottom: 20px; }
+            .loading { color: #6b7280; }
+          </style>
+        </head>
+        <body>
+          <div class="error">❌ Twitter Connection Failed</div>
+          <div class="loading">Redirecting you back to the app...</div>
+          <script>
+            setTimeout(() => {
+              window.location.href = '${process.env.FRONTEND_URL}/dashboard/community/platforms?error=callback_failed';
+            }, 2000);
+          </script>
+        </body>
+        </html>
+      `;
+      return res.send(errorHtml);
+    } else {
+      res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=callback_failed`);
+    }
   }
 }));
 
@@ -1054,13 +1146,29 @@ router.get('/debug/twitter-url', async (req, res) => {
     console.log('🐦 Debug: Testing Twitter OAuth URL generation...');
     const result = await (twitterService as any).generateAuthUrl(testState);
 
+    // Store state in Redis for testing (same as real OAuth flow)
+    await storeOAuthState(testState, {
+      userId: 'debug_user_123',
+      organizationId: 'debug_org_456',
+      platform: 'twitter',
+      codeVerifier: result.codeVerifier,
+      timestamp: Date.now()
+    });
+
+    console.log('✅ Debug: State stored in Redis for testing');
+
     res.json({
       timestamp: new Date().toISOString(),
-      message: 'Twitter OAuth URL generated successfully',
+      message: 'Twitter OAuth URL generated successfully (with state stored)',
       state: testState,
       authUrl: result.url,
       codeVerifier: result.codeVerifier ? 'generated' : 'missing',
-      urlPreview: result.url.substring(0, 100) + '...'
+      urlPreview: result.url.substring(0, 100) + '...',
+      debug: {
+        stateStored: true,
+        userId: 'debug_user_123',
+        organizationId: 'debug_org_456'
+      }
     });
   } catch (error) {
     console.error('❌ Debug: Twitter OAuth URL generation failed:', error);
@@ -1110,6 +1218,133 @@ router.get('/debug/twitter-config', (req, res) => {
   } catch (error) {
     console.error('❌ Debug: Twitter config check failed:', error);    res.status(500).json({
       error: 'Twitter config check failed',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Debug endpoint to test LinkedIn OAuth URL generation
+router.get('/debug/linkedin-url', async (req, res) => {
+  try {
+    const linkedinService = OAuthServiceFactory.getService('linkedin');
+    const testState = `debug_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+
+    console.log('🔗 Debug: Testing LinkedIn OAuth URL generation...');
+    const authUrl = (linkedinService as any).generateAuthUrl(testState);
+
+    // Store state in Redis for testing (same as real OAuth flow)
+    await storeOAuthState(testState, {
+      userId: 'debug_user_123',
+      organizationId: '51eehsR75718t2svEqhh', // Use real org ID
+      platform: 'linkedin',
+      timestamp: Date.now()
+    });
+
+    console.log('✅ Debug: LinkedIn state stored in Redis for testing');
+
+    res.json({
+      timestamp: new Date().toISOString(),
+      message: 'LinkedIn OAuth URL generated successfully (with state stored)',
+      state: testState,
+      authUrl,
+      urlPreview: authUrl.substring(0, 100) + '...',
+      debug: {
+        stateStored: true,
+        userId: 'debug_user_123',
+        organizationId: '51eehsR75718t2svEqhh'
+      }
+    });
+  } catch (error) {
+    console.error('❌ Debug: LinkedIn OAuth URL generation failed:', error);
+    res.status(500).json({
+      error: 'LinkedIn OAuth URL generation failed',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString(),
+      details: error instanceof Error ? {
+        name: error.name,
+        stack: error.stack
+      } : undefined
+    });
+  }
+});
+
+// Debug endpoint to test Facebook OAuth URL generation
+router.get('/debug/facebook-url', async (req, res) => {
+  try {
+    const facebookService = OAuthServiceFactory.getService('facebook');
+    const testState = `debug_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+
+    console.log('📘 Debug: Testing Facebook OAuth URL generation...');
+    const authUrl = (facebookService as any).generateAuthUrl(testState);
+
+    // Store state in Redis for testing
+    await storeOAuthState(testState, {
+      userId: 'debug_user_123',
+      organizationId: '51eehsR75718t2svEqhh',
+      platform: 'facebook',
+      timestamp: Date.now()
+    });
+
+    console.log('✅ Debug: Facebook state stored in Redis for testing');
+
+    res.json({
+      timestamp: new Date().toISOString(),
+      message: 'Facebook OAuth URL generated successfully (with state stored)',
+      state: testState,
+      authUrl,
+      urlPreview: authUrl.substring(0, 100) + '...',
+      debug: {
+        stateStored: true,
+        userId: 'debug_user_123',
+        organizationId: '51eehsR75718t2svEqhh'
+      }
+    });
+  } catch (error) {
+    console.error('❌ Debug: Facebook OAuth URL generation failed:', error);
+    res.status(500).json({
+      error: 'Facebook OAuth URL generation failed',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Debug endpoint to test Instagram OAuth URL generation
+router.get('/debug/instagram-url', async (req, res) => {
+  try {
+    const instagramService = OAuthServiceFactory.getService('instagram');
+    const testState = `debug_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+
+    console.log('📷 Debug: Testing Instagram OAuth URL generation...');
+    const authUrl = (instagramService as any).generateAuthUrl(testState);
+
+    // Store state in Redis for testing
+    await storeOAuthState(testState, {
+      userId: 'debug_user_123',
+      organizationId: '51eehsR75718t2svEqhh',
+      platform: 'instagram',
+      timestamp: Date.now()
+    });
+
+    console.log('✅ Debug: Instagram state stored in Redis for testing');
+
+    res.json({
+      timestamp: new Date().toISOString(),
+      message: 'Instagram OAuth URL generated successfully (with state stored)',
+      state: testState,
+      authUrl,
+      urlPreview: authUrl.substring(0, 100) + '...',
+      debug: {
+        stateStored: true,
+        userId: 'debug_user_123',
+        organizationId: '51eehsR75718t2svEqhh'
+      }
+    });
+  } catch (error) {
+    console.error('❌ Debug: Instagram OAuth URL generation failed:', error);
+    res.status(500).json({
+      error: 'Instagram OAuth URL generation failed',
       message: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     });

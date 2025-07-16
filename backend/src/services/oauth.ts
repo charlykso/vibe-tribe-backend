@@ -3,6 +3,7 @@ import { getFirestoreClient, getServerTimestamp } from './database.js';
 import { SocialAccount } from '../types/database.js';
 import crypto from 'crypto';
 import Redis from 'ioredis';
+import fetch from 'node-fetch';
 import {
   validateEnvironment,
   encryptTokenData,
@@ -489,12 +490,83 @@ export class TwitterOAuthService {
         clientSecret: this.config.clientSecret ? 'present' : 'missing'
       });
 
-      // Exchange code for tokens
-      const { client: loggedClient, accessToken, refreshToken } = await this.client.loginWithOAuth2({
-        code,
-        codeVerifier,
-        redirectUri: this.config.redirectUri,
-      });
+      // Exchange code for tokens using manual implementation
+      let loggedClient, accessToken, refreshToken;
+      try {
+        console.log('🐦 Attempting manual token exchange...');
+
+        // Manual token exchange to bypass library issues
+        const tokenUrl = 'https://api.twitter.com/2/oauth2/token';
+        const credentials = `${this.config.clientId}:${this.config.clientSecret}`;
+        const base64Credentials = Buffer.from(credentials).toString('base64');
+
+        const tokenBody = new URLSearchParams({
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: this.config.redirectUri,
+          code_verifier: codeVerifier
+        });
+
+        console.log('🐦 Making manual token request:', {
+          url: tokenUrl,
+          authHeader: `Basic ${base64Credentials.substring(0, 20)}...`,
+          body: tokenBody.toString()
+        });
+
+        const tokenResponse = await fetch(tokenUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${base64Credentials}`,
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: tokenBody.toString()
+        });
+
+        const tokenData = await tokenResponse.json();
+
+        if (!tokenResponse.ok) {
+          console.error('🐦 Manual token exchange failed:', {
+            status: tokenResponse.status,
+            statusText: tokenResponse.statusText,
+            data: tokenData
+          });
+          return {
+            success: false,
+            error: `Request failed with code ${tokenResponse.status}`,
+            details: {
+              message: tokenData.error_description || tokenData.error,
+              status: tokenResponse.status,
+              data: tokenData
+            }
+          };
+        }
+
+        accessToken = tokenData.access_token;
+        refreshToken = tokenData.refresh_token;
+
+        console.log('🐦 Manual token exchange successful:', {
+          accessToken: accessToken ? `${accessToken.substring(0, 20)}...` : 'missing',
+          refreshToken: refreshToken ? `${refreshToken.substring(0, 20)}...` : 'missing'
+        });
+
+        // Create authenticated client with the tokens
+        loggedClient = new TwitterApi(accessToken);
+
+      } catch (tokenError: any) {
+        console.error('🐦 Manual token exchange failed:', {
+          error: tokenError.message,
+          stack: tokenError.stack
+        });
+        return {
+          success: false,
+          error: `Request failed with code ${tokenError.status || tokenError.code || 'unknown'}`,
+          details: {
+            message: tokenError.message,
+            status: tokenError.status,
+            code: tokenError.code
+          }
+        };
+      }
 
       console.log('🐦 Twitter token exchange successful:', {
         accessToken: accessToken ? `${accessToken.substring(0, 20)}...` : 'missing',
@@ -617,94 +689,161 @@ export class LinkedInOAuthService {
 
   // Generate OAuth URL for LinkedIn
   generateAuthUrl(state: string): string {
-    // If using demo credentials, redirect to demo OAuth page
-    if (this.config.clientId === 'demo_linkedin_client_id') {
-      const params = new URLSearchParams({
-        platform: 'linkedin',
-        state,
-        redirect_uri: this.config.redirectUri
-      });
-      return `http://localhost:8081/oauth/demo?${params.toString()}`;
-    }
+    console.log('🔗 Generating LinkedIn OAuth URL with real credentials...');
 
     const params = new URLSearchParams({
       response_type: 'code',
       client_id: this.config.clientId,
       redirect_uri: this.config.redirectUri,
       state,
-      scope: 'r_liteprofile'
+      scope: 'r_liteprofile r_emailaddress w_member_social'
     });
 
-    return `https://www.linkedin.com/oauth/v2/authorization?${params.toString()}`;
+    const authUrl = `https://www.linkedin.com/oauth/v2/authorization?${params.toString()}`;
+    console.log('🔗 LinkedIn OAuth URL generated:', authUrl);
+
+    return authUrl;
   }
 
   // Handle OAuth callback
   async handleCallback(code: string): Promise<OAuthResult> {
     try {
-      // Handle demo OAuth codes
-      if (code.startsWith('demo_code_linkedin_')) {
-        const account: Partial<SocialAccount> = {
-          platform: 'linkedin',
-          platform_user_id: 'demo_linkedin_user_101',
-          username: 'demo-user',
-          display_name: 'Demo User',
-          avatar_url: '/api/placeholder/40/40',
-          access_token: `demo_linkedin_token_${Date.now()}`,
-          permissions: ['r_liteprofile', 'r_emailaddress', 'w_member_social'],
-          metadata: {
-            id: 'demo_linkedin_user_101',
-            localizedFirstName: 'Demo',
-            localizedLastName: 'User',
-            followers_count: 850
-          }
-        };
-        return { success: true, account };
-      }
+      console.log('🔗 LinkedIn OAuth handleCallback called with:', {
+        code: code ? `${code.substring(0, 10)}...` : 'missing',
+        redirectUri: this.config.redirectUri,
+        clientId: this.config.clientId ? `${this.config.clientId.substring(0, 10)}...` : 'missing',
+        clientSecret: this.config.clientSecret ? 'present' : 'missing'
+      });
 
-      // Exchange code for access token
-      const tokenResponse = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
+      console.log('🔗 Processing real LinkedIn OAuth (no demo mode)...');
+
+      // Exchange code for tokens using manual implementation
+      let accessToken;
+      try {
+        console.log('🔗 Attempting manual LinkedIn token exchange...');
+
+        // Manual token exchange for LinkedIn
+        const tokenUrl = 'https://www.linkedin.com/oauth/v2/accessToken';
+
+        const tokenBody = new URLSearchParams({
           grant_type: 'authorization_code',
           code,
           redirect_uri: this.config.redirectUri,
           client_id: this.config.clientId,
           client_secret: this.config.clientSecret,
-        }),
-      });
+        });
 
-      if (!tokenResponse.ok) {
-        throw new Error('Failed to exchange code for access token');
+        console.log('🔗 Making manual LinkedIn token request:', {
+          url: tokenUrl,
+          body: tokenBody.toString()
+        });
+
+        const tokenResponse = await fetch(tokenUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: tokenBody.toString()
+        });
+
+        const tokenData = await tokenResponse.json();
+
+        if (!tokenResponse.ok) {
+          console.error('🔗 Manual LinkedIn token exchange failed:', {
+            status: tokenResponse.status,
+            statusText: tokenResponse.statusText,
+            data: tokenData
+          });
+          return {
+            success: false,
+            error: `Request failed with code ${tokenResponse.status}`,
+            details: {
+              message: tokenData.error_description || tokenData.error,
+              status: tokenResponse.status,
+              data: tokenData
+            }
+          };
+        }
+
+        accessToken = tokenData.access_token;
+
+        console.log('🔗 Manual LinkedIn token exchange successful:', {
+          accessToken: accessToken ? `${accessToken.substring(0, 20)}...` : 'missing'
+        });
+
+      } catch (tokenError: any) {
+        console.error('🔗 Manual LinkedIn token exchange failed:', {
+          error: tokenError.message,
+          stack: tokenError.stack
+        });
+        return {
+          success: false,
+          error: `Request failed with code ${tokenError.status || tokenError.code || 'unknown'}`,
+          details: {
+            message: tokenError.message,
+            status: tokenError.status,
+            code: tokenError.code
+          }
+        };
       }
 
-      const tokenData = await tokenResponse.json();
-      const accessToken = (tokenData as any).access_token;
+      // Get user profile using LinkedIn v2 API
+      console.log('🔗 Fetching LinkedIn user profile...');
 
-      // Get user profile
-      const profileResponse = await fetch('https://api.linkedin.com/v2/people/~', {
+      const profileResponse = await fetch('https://api.linkedin.com/v2/people/~?projection=(id,localizedFirstName,localizedLastName,profilePicture(displayImage~:playableStreams))', {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
         },
       });
 
       if (!profileResponse.ok) {
-        throw new Error('Failed to get user profile from LinkedIn');
+        const errorData = await profileResponse.json();
+        console.error('🔗 Failed to get LinkedIn user profile:', {
+          status: profileResponse.status,
+          error: errorData
+        });
+        return {
+          success: false,
+          error: `Failed to get user profile: ${profileResponse.status}`,
+          details: errorData
+        };
       }
 
       const profileData = await profileResponse.json();
+      console.log('🔗 LinkedIn profile data received:', {
+        id: profileData.id,
+        firstName: profileData.localizedFirstName,
+        lastName: profileData.localizedLastName
+      });
+
+      // Extract avatar URL if available
+      let avatarUrl = '/api/placeholder/40/40';
+      if (profileData.profilePicture && profileData.profilePicture.displayImage) {
+        const images = profileData.profilePicture.displayImage.elements;
+        if (images && images.length > 0) {
+          avatarUrl = images[0].identifiers[0].identifier;
+        }
+      }
 
       const account: Partial<SocialAccount> = {
         platform: 'linkedin',
-        platform_user_id: (profileData as any).id,
-        username: `${(profileData as any).localizedFirstName} ${(profileData as any).localizedLastName}`,
-        display_name: `${(profileData as any).localizedFirstName} ${(profileData as any).localizedLastName}`,
+        platform_user_id: profileData.id,
+        username: `${profileData.localizedFirstName}-${profileData.localizedLastName}`.toLowerCase().replace(/\s+/g, '-'),
+        display_name: `${profileData.localizedFirstName} ${profileData.localizedLastName}`,
+        avatar_url: avatarUrl,
         access_token: accessToken,
         permissions: ['r_liteprofile', 'r_emailaddress', 'w_member_social'],
-        metadata: profileData
+        metadata: {
+          ...profileData,
+          followers_count: 0 // LinkedIn doesn't provide follower count in basic profile
+        }
       };
+
+      console.log('🔗 LinkedIn account created successfully:', {
+        platform_user_id: account.platform_user_id,
+        username: account.username,
+        display_name: account.display_name
+      });
 
       return { success: true, account };
     } catch (error) {
