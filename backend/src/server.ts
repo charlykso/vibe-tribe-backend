@@ -161,12 +161,13 @@ async function startServer() {
     initializeCronJobs();
     console.log('✅ Cron jobs initialized successfully');
 
-    // Start server
-    server.listen(PORT, () => {
+    // Start server on all network interfaces for testing
+    server.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/health`);
       console.log(`🔗 API base URL: http://localhost:${PORT}/api/v1`);
       console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🌍 Network access: http://0.0.0.0:${PORT}/api/v1`);
     });
 
   } catch (error) {

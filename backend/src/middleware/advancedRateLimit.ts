@@ -177,7 +177,7 @@ export const rateLimitConfigs = {
   // Authentication endpoints (stricter in production, relaxed in development)
   auth: createAdvancedRateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    maxRequests: process.env.NODE_ENV === 'production' ? 10 : 100, // More lenient in development
+    maxRequests: parseInt(process.env.AUTH_RATE_LIMIT_MAX || (process.env.NODE_ENV === 'production' ? '50' : '100')), // Configurable via env var
     keyGenerator: keyGenerators.byIP,
     message: 'Too many authentication attempts, please try again later.'
   }),
