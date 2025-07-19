@@ -110,6 +110,16 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
+// Health check endpoint
+app.get('/api/v1/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    googleAuthEnabled: !!process.env.GOOGLE_CLIENT_ID
+  });
+});
+
 // CSRF token endpoint
 app.get('/api/v1/csrf-token', getCsrfToken);
 
