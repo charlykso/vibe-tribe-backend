@@ -1226,6 +1226,109 @@ router.get('/debug/twitter-config', (req, res) => {
       redirectUri: process.env.TWITTER_REDIRECT_URI
     };
 
+    // Check if credentials are present
+    const status = {
+      clientId: config.clientId ? 'present' : 'missing',
+      clientSecret: config.clientSecret ? 'present' : 'missing',
+      redirectUri: config.redirectUri ? 'present' : 'missing',
+      environment: process.env.NODE_ENV,
+      timestamp: new Date().toISOString()
+    };
+
+    // Test Twitter service initialization
+    let serviceStatus = 'unknown';
+    let serviceError = null;
+
+    try {
+      const twitterService = OAuthServiceFactory.getService('twitter');
+      serviceStatus = 'initialized';
+    } catch (error) {
+      serviceStatus = 'failed';
+      serviceError = error instanceof Error ? error.message : 'Unknown error';
+    }
+
+    res.json({
+      status: 'Twitter OAuth Configuration Check',
+      credentials: status,
+      service: {
+        status: serviceStatus,
+        error: serviceError
+      },
+      allEnvVars: Object.keys(process.env).filter(key =>
+        key.includes('TWITTER') || key.includes('OAUTH') || key.includes('REDIS') || key.includes('FRONTEND')
+      ).reduce((acc, key) => {
+        acc[key] = process.env[key] ? 'set' : 'unset';
+        return acc;
+      }, {} as Record<string, string>)
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to check Twitter configuration',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Debug endpoint to test OAuth initiation without authentication
+router.get('/debug/test-oauth-initiate/:platform', async (req, res) => {
+  try {
+    const { platform } = req.params;
+
+    console.log(`🧪 Debug: Testing OAuth initiation for ${platform}`);
+
+    // Mock user data for testing
+    const mockUser = {
+      id: 'debug_user_123',
+      organization_id: 'debug_org_456'
+    };
+
+    // Generate state
+    const state = generateSecureState(mockUser.id, mockUser.organization_id);
+    console.log('🔐 Generated state:', state);
+
+    // Get OAuth service
+    const oauthService = OAuthServiceFactory.getService(platform);
+    console.log('🏭 OAuth service obtained');
+
+    // Generate auth URL
+    let authUrl: string;
+    let codeVerifier: string | undefined;
+
+    if (platform === 'twitter') {
+      const result = await (oauthService as any).generateAuthUrl(state);
+      authUrl = result.url;
+      codeVerifier = result.codeVerifier;
+    } else {
+      authUrl = (oauthService as any).generateAuthUrl(state);
+    }
+
+    console.log('✅ Auth URL generated successfully');
+
+    res.json({
+      success: true,
+      platform,
+      authUrl: authUrl.substring(0, 100) + '...',
+      state,
+      codeVerifier: codeVerifier ? 'generated' : 'not applicable',
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error(`❌ Debug OAuth initiation failed for ${req.params.platform}:`, error);
+
+    res.status(500).json({
+      success: false,
+      platform: req.params.platform,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      errorDetails: error instanceof Error ? {
+        name: error.name,
+        stack: error.stack
+      } : undefined,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
     console.log('🐦 Debug: Twitter configuration check...');
 
     res.json({
