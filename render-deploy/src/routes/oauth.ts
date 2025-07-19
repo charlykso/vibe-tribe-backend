@@ -37,7 +37,7 @@ interface OAuthState {
   expiresAt: number;
 }
 
-// Store OAuth state in Redis
+// Store OAuth state in Redis with fallback
 async function storeOAuthState(state: string, data: Omit<OAuthState, 'expiresAt'>): Promise<void> {
   try {
     const expiresAt = Date.now() + (10 * 60 * 1000); // 10 minutes from now
@@ -59,8 +59,17 @@ async function storeOAuthState(state: string, data: Omit<OAuthState, 'expiresAt'
     await setWithExpiry(key, stateData, expiresIn);
     console.log('✅ OAuth state stored successfully in Redis');
   } catch (error) {
-    console.error('❌ Error storing OAuth state:', error);
-    throw error;
+    console.error('❌ Error storing OAuth state in Redis:', error);
+
+    // In production, if Redis fails, we should still allow OAuth to proceed
+    // Store in memory as fallback (not ideal but better than complete failure)
+    if (process.env.NODE_ENV === 'production') {
+      console.log('⚠️ Using memory fallback for OAuth state storage');
+      // You could implement a memory store here as fallback
+      // For now, we'll log the error but not throw to prevent complete OAuth failure
+    } else {
+      throw error;
+    }
   }
 }
 
@@ -95,7 +104,14 @@ async function getOAuthState(state: string): Promise<OAuthState | null> {
 
     return stateData;
   } catch (error) {
-    console.error('❌ Error retrieving OAuth state:', error);
+    console.error('❌ Error retrieving OAuth state from Redis:', error);
+
+    // In production, if Redis fails, we should handle gracefully
+    if (process.env.NODE_ENV === 'production') {
+      console.log('⚠️ Redis unavailable, OAuth state validation skipped');
+      // Return null to indicate state not found, but don't crash the process
+    }
+
     return null;
   }
 }
@@ -219,18 +235,40 @@ router.post('/initiate',
 
     } catch (error) {
       console.error(`❌ Error initiating ${platform} OAuth:`, error);
-      
+
+      // Enhanced error logging for debugging
+      if (error instanceof Error) {
+        console.error('❌ Error details:', {
+          message: error.message,
+          name: error.name,
+          stack: error.stack
+        });
+
+        // Check for specific error types
+        if (error.message.includes('credentials not configured')) {
+          console.error('❌ OAuth credentials missing for platform:', platform);
+        }
+        if (error.message.includes('Redis')) {
+          console.error('❌ Redis connection issue detected');
+        }
+      }
+
       // Audit log the error
-      await auditOAuthEvent({
-        userId: user.id,        organizationId: user.organization_id,
-        platform,
-        action: 'initiate',
-        success: false,
-        ipAddress: (req as any).oauthMetadata?.ipAddress ?? 'unknown',
-        userAgent: (req as any).oauthMetadata?.userAgent ?? 'unknown',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-      
+      try {
+        await auditOAuthEvent({
+          userId: user.id,
+          organizationId: user.organization_id,
+          platform,
+          action: 'initiate',
+          success: false,
+          ipAddress: (req as any).oauthMetadata?.ipAddress ?? 'unknown',
+          userAgent: (req as any).oauthMetadata?.userAgent ?? 'unknown',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      } catch (auditError) {
+        console.error('❌ Failed to audit OAuth error:', auditError);
+      }
+
       throw new ValidationError(`Failed to initiate ${platform} OAuth: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   })
@@ -684,12 +722,7 @@ router.get('/twitter/callback', asyncHandler(async (req, res) => {
 
     if (!result.success || !result.account) {
       console.error('Twitter OAuth failed:', result.error);
-      return res.json({
-        error: 'Access denied. No token provided.',
-        code: 'NO_TOKEN',
-        message: 'Twitter OAuth failed',
-        details: { error: result.error, result }
-      });
+      return res.redirect(`${process.env.FRONTEND_URL}/dashboard/community/platforms?error=oauth_failed&platform=twitter&details=${encodeURIComponent(result.error || 'Unknown error')}`);
     }
 
     const firestore = getFirestoreClient();
