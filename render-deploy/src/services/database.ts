@@ -130,10 +130,40 @@ export const initializeDatabase = async (): Promise<void> => {
           console.log('🔄 Attempting to use Firebase service account Base64...');
           const serviceAccountJson = Buffer.from(firebaseServiceAccountBase64, 'base64').toString('utf8');
           serviceAccount = JSON.parse(serviceAccountJson);
+
+          // Fix private key formatting issues
+          if (serviceAccount.private_key) {
+            console.log('🔧 Fixing private key formatting...');
+
+            // Ensure proper newline characters (not literal \n)
+            serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+
+            // Ensure the private key ends with a newline
+            if (!serviceAccount.private_key.endsWith('\n')) {
+              serviceAccount.private_key += '\n';
+            }
+
+            // Validate private key format
+            const hasBegin = serviceAccount.private_key.includes('-----BEGIN PRIVATE KEY-----');
+            const hasEnd = serviceAccount.private_key.includes('-----END PRIVATE KEY-----');
+
+            console.log('🔍 Private key validation:', {
+              hasBegin,
+              hasEnd,
+              length: serviceAccount.private_key.length,
+              lineCount: serviceAccount.private_key.split('\n').length
+            });
+
+            if (!hasBegin || !hasEnd) {
+              throw new Error('Invalid private key format: missing BEGIN or END markers');
+            }
+          }
+
           console.log('✅ Using complete Firebase service account JSON (Base64)');
         } catch (error) {
           console.error('❌ Failed to parse Firebase service account JSON:', error.message);
           console.log('⚠️ Falling back to individual environment variables...');
+          serviceAccount = null; // Reset to try individual variables
         }
       }
 

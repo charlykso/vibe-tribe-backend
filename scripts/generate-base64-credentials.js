@@ -92,6 +92,20 @@ function generateFirebaseBase64() {
     privateKey += '\n'
   }
 
+  // Additional validation and cleanup
+  if (privateKey) {
+    // Remove any extra whitespace at the beginning or end
+    privateKey = privateKey.trim() + '\n'
+
+    // Ensure proper PEM format
+    if (!privateKey.startsWith('-----BEGIN PRIVATE KEY-----')) {
+      console.error('❌ Private key does not start with proper PEM header');
+    }
+    if (!privateKey.includes('-----END PRIVATE KEY-----')) {
+      console.error('❌ Private key does not contain proper PEM footer');
+    }
+  }
+
   // Validate the private key format
   if (privateKey) {
     const lines = privateKey.split('\n')
