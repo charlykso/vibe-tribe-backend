@@ -9,6 +9,7 @@ dotenv.config();
 
 // Import routes
 import authRoutes from './routes/auth.js';
+import googleAuthRoutes from './routes/googleAuth.js';
 import oauthRoutes from './routes/oauth.js';
 import invitationRoutes from './routes/invitations.js';
 import userRoutes from './routes/users.js';
@@ -114,6 +115,7 @@ app.get('/api/v1/csrf-token', getCsrfToken);
 
 // API routes
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/auth/google', googleAuthRoutes);
 app.use('/api/v1/oauth', oauthRoutes);
 app.use('/api/v1/invitations', invitationRoutes);
 app.use('/api/v1/users', authMiddleware, userRoutes);

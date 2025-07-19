@@ -81,6 +81,26 @@ export class AuthService {
     };
   }
 
+  static async initiateGoogleAuth(): Promise<{ authUrl: string; state: string }> {
+    const response = await fetch(`${this.API_URL}/auth/google/initiate`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error ?? data.message ?? 'Failed to initiate Google authentication');
+    }
+
+    return {
+      authUrl: data.authUrl,
+      state: data.state,
+    };
+  }
+
   static async logout(): Promise<void> {
     const token = AuthService.getTokenFromStorage();
 

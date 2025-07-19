@@ -208,6 +208,17 @@ export const useAuth = () => {
     setAuthState(prev => ({ ...prev, error: null }));
   }, []);
 
+  // Direct setters for Google OAuth callback
+  const setUser = useCallback((user: User) => {
+    setAuthState(prev => ({ ...prev, user, loading: false, error: null }));
+  }, []);
+
+  const setToken = useCallback((token: string) => {
+    AuthService.setTokenInStorage(token);
+    // Connect to WebSocket
+    websocketService.connect(token);
+  }, []);
+
   // Helper functions
   const isAuthenticated = !!authState.user;
   const isAdmin = authState.user?.role === 'admin';
@@ -231,5 +242,7 @@ export const useAuth = () => {
     updateProfile,
     clearError,
     hasRole,
+    setUser,
+    setToken,
   };
 };

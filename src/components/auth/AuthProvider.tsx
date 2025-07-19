@@ -16,6 +16,8 @@ interface AuthContextType {
   updateProfile: (updates: Partial<User>) => Promise<{ success: boolean; error?: string }>;
   clearError: () => void;
   hasRole: (role: User['role']) => boolean;
+  setUser: (user: User) => void;
+  setToken: (token: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

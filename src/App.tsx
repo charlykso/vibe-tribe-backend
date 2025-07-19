@@ -11,6 +11,7 @@ import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { ForgotPassword } from "./pages/ForgotPassword";
+import { AuthCallback } from "./pages/AuthCallback";
 import { OAuthCallback } from "./pages/OAuthCallback";
 import { PrivacyPolicy } from "./pages/PrivacyPolicy";
 import { DemoOAuth } from "./pages/DemoOAuth";
@@ -34,6 +35,7 @@ const App = () => (
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/oauth/callback" element={<OAuthCallback />} />
               <Route path="/oauth/demo" element={<DemoOAuth />} />
               <Route

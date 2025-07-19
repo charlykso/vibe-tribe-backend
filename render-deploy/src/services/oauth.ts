@@ -1207,6 +1207,131 @@ export class InstagramOAuthService {
   }
 }
 
+// Google OAuth Service for Authentication (not social media linking)
+export class GoogleOAuthService implements OAuthService {
+  private config: OAuthConfig;
+
+  constructor() {
+    this.config = {
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      redirectUri: process.env.GOOGLE_REDIRECT_URI || `${process.env.BACKEND_URL || 'http://localhost:3001'}/api/v1/auth/google/callback`
+    };
+  }
+
+  // Generate OAuth URL for Google Sign-In
+  generateAuthUrl(state: string): string {
+    const params = new URLSearchParams({
+      client_id: this.config.clientId,
+      redirect_uri: this.config.redirectUri,
+      scope: 'openid email profile',
+      response_type: 'code',
+      state,
+      access_type: 'offline',
+      prompt: 'consent'
+    });
+
+    return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+  }
+
+  // Handle OAuth callback for Google Sign-In
+  async handleCallback(code: string): Promise<OAuthResult> {
+    try {
+      console.log('🔄 Handling Google OAuth callback...');
+
+      // Exchange code for access token
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          client_id: this.config.clientId,
+          client_secret: this.config.clientSecret,
+          code,
+          grant_type: 'authorization_code',
+          redirect_uri: this.config.redirectUri,
+        }),
+      });
+
+      if (!tokenResponse.ok) {
+        const errorData = await tokenResponse.text();
+        console.error('❌ Google token exchange failed:', errorData);
+        throw new Error(`Token exchange failed: ${tokenResponse.status}`);
+      }
+
+      const tokenData = await tokenResponse.json();
+      const accessToken = tokenData.access_token;
+
+      // Get user profile information
+      const profileResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!profileResponse.ok) {
+        throw new Error(`Failed to fetch Google profile: ${profileResponse.status}`);
+      }
+
+      const profileData = await profileResponse.json();
+
+      // Return user data for authentication (not social account linking)
+      const userData = {
+        id: profileData.id,
+        email: profileData.email,
+        name: profileData.name,
+        picture: profileData.picture,
+        verified_email: profileData.verified_email
+      };
+
+      console.log('✅ Google OAuth callback successful');
+
+      return {
+        success: true,
+        userData,
+        accessToken
+      };
+    } catch (error) {
+      console.error('❌ Error handling Google OAuth callback:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Google OAuth failed'
+      };
+    }
+  }
+
+  async refreshAccessToken(refreshToken: string): Promise<{ accessToken: string; refreshToken?: string } | null> {
+    try {
+      const response = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          client_id: this.config.clientId,
+          client_secret: this.config.clientSecret,
+          refresh_token: refreshToken,
+          grant_type: 'refresh_token',
+        }),
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const data = await response.json();
+      return {
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token || refreshToken,
+      };
+    } catch (error) {
+      console.error('❌ Error refreshing Google access token:', error);
+      return null;
+    }
+  }
+}
+
 // OAuth Service Factory
 export class OAuthServiceFactory {
   static getService(platform: string) {
@@ -1219,6 +1344,8 @@ export class OAuthServiceFactory {
         return new FacebookOAuthService();
       case 'instagram':
         return new InstagramOAuthService();
+      case 'google':
+        return new GoogleOAuthService();
       default:
         throw new Error(`Unsupported platform: ${platform}`);
     }

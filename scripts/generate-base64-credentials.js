@@ -40,6 +40,9 @@ function generateOAuthBase64() {
     INSTAGRAM_CLIENT_ID: process.env.INSTAGRAM_CLIENT_ID || '',
     INSTAGRAM_CLIENT_SECRET: process.env.INSTAGRAM_CLIENT_SECRET || '',
     INSTAGRAM_REDIRECT_URI: process.env.INSTAGRAM_REDIRECT_URI || '',
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
+    GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI || '',
   }
 
   // Check for missing credentials
