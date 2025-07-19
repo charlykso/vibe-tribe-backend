@@ -277,7 +277,7 @@ export const decryptTokenData = (encryptedData: string): SecureTokenData => {
 export const oauthRateLimits = {
   initiate: {
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 5, // 5 OAuth initiations per window
+    max: 50, // 50 OAuth initiations per window (increased from 5)
     message: 'Too many OAuth initiation attempts'
   },
   callback: {

@@ -41,7 +41,22 @@ export const oauthInitiateRateLimit = rateLimit({
   },
   skip: (req) => {
     // Skip rate limiting for internal requests in development
-    return !isProduction() && req.headers['x-internal-request'] === 'true';
+    if (!isProduction() && req.headers['x-internal-request'] === 'true') {
+      return true;
+    }
+
+    // Temporarily skip rate limiting for debug endpoints
+    if (req.path?.includes('/debug/')) {
+      return true;
+    }
+
+    // Skip rate limiting if debug mode is enabled via environment variable
+    if (process.env.OAUTH_DEBUG_MODE === 'true') {
+      console.log('🧪 OAuth rate limiting bypassed due to debug mode');
+      return true;
+    }
+
+    return false;
   }
 });
 
