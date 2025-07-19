@@ -8,6 +8,32 @@ import { ValidationError } from '../utils/errors.js';
 
 const router = Router();
 
+// Debug endpoint to check Google OAuth configuration
+router.get('/debug', (req, res) => {
+  try {
+    const config = {
+      hasClientId: !!process.env.GOOGLE_CLIENT_ID,
+      hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+      hasRedirectUri: !!process.env.GOOGLE_REDIRECT_URI,
+      clientIdLength: process.env.GOOGLE_CLIENT_ID?.length || 0,
+      redirectUri: process.env.GOOGLE_REDIRECT_URI || 'not set'
+    };
+
+    res.json({
+      success: true,
+      message: 'Google OAuth debug info',
+      config,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Debug endpoint failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // Google OAuth initiation for authentication (sign-in/sign-up)
 router.get('/initiate', async (req, res) => {
   try {
