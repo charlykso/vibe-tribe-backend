@@ -1,4 +1,4 @@
-// API Client for VibeTribe Backend Integration
+// API Client for Tribe Backend Integration
 import { AuthService } from './auth';
 
 export interface ApiResponse<T = any> {
@@ -211,17 +211,17 @@ export interface CommunityStats {
   communities: Community[];
 }
 
-// Mock data for fallback
+// Mock data for fallback - will be replaced with real API data
 const mockMetrics: DashboardMetrics = {
-  totalMembers: 24847,
-  activeMembers: 18492,
-  messagesToday: 3847,
-  engagementRate: 74.8,
+  totalMembers: 0, // Real data will be fetched from API
+  activeMembers: 0, // Real data will be fetched from API
+  messagesToday: 0, // Real data will be fetched from API
+  engagementRate: 0, // Real data will be fetched from API
   growth: {
-    members: 12.5,
-    active: 8.2,
-    messages: 23.1,
-    engagement: 4.3
+    members: 0, // Real data will be fetched from API
+    active: 0, // Real data will be fetched from API
+    messages: 0, // Real data will be fetched from API
+    engagement: 0 // Real data will be fetched from API
   }
 };
 

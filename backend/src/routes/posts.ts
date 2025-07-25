@@ -6,7 +6,8 @@ import { AuthenticatedRequest, requireOrganization } from '../middleware/auth.js
 import { Post } from '../types/database.js';
 import { schedulePost, cancelScheduledPost } from '../services/queue.js';
 import { validatePostForPlatforms, publishToSocialPlatforms } from '../services/socialMedia.js';
-import { io } from '../server.js';
+// import { io } from '../server.js'; // Temporarily disabled - WebSocket not available in dev mode
+const io: any = null; // WebSocket disabled in development mode
 
 const router = Router();
 

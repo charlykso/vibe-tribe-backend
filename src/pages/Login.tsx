@@ -119,7 +119,7 @@ export const Login: React.FC = () => {
             <div className="flex items-center justify-between">
               <Link
                 to="/forgot-password"
-                className="text-sm text-blue-600 hover:text-blue-500"
+                className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300"
               >
                 Forgot your password?
               </Link>
@@ -144,10 +144,10 @@ export const Login: React.FC = () => {
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
+                <span className="w-full border-t border-gray-200 dark:border-gray-700" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-gray-500">Or continue with</span>
+                <span className="bg-white dark:bg-gray-800 px-2 text-gray-500 dark:text-gray-400">Or continue with</span>
               </div>
             </div>
 
@@ -156,9 +156,9 @@ export const Login: React.FC = () => {
               disabled={isSubmitting || loading}
             />
 
-            <div className="text-center text-sm text-gray-600">
+            <div className="text-center text-sm text-gray-600 dark:text-gray-400">
               Don't have an account?{' '}
-              <Link to="/register" className="text-blue-600 hover:text-blue-500 font-medium">
+              <Link to="/register" className="text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 font-medium">
                 Sign up
               </Link>
             </div>

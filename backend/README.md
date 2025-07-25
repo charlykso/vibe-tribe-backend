@@ -1,6 +1,6 @@
-# VibeTribe Backend
+# Tribe Backend
 
-This is the backend API for the VibeTribe social media management platform.
+This is the backend API for the Tribe social media management platform.
 
 ## 🚀 Technology Stack
 

@@ -109,15 +109,21 @@ router.post('/invite', asyncHandler(async (req: AuthenticatedRequest, res) => {
 
   // Send invitation email
   try {
-    await emailService.sendInvitationEmail(
+    console.log(`📧 Attempting to send invitation email to ${email}...`);
+    const emailResult = await emailService.sendInvitationEmail(
       email,
       user.name,
       organization.name,
       invitationToken
     );
-    console.log(`✅ Invitation email sent to ${email}`);
+
+    if (emailResult.success) {
+      console.log(`✅ Invitation email sent successfully to ${email}`);
+    } else {
+      console.error(`❌ Failed to send invitation email to ${email}:`, emailResult.error);
+    }
   } catch (error) {
-    console.error('❌ Failed to send invitation email:', error);
+    console.error('❌ Exception while sending invitation email:', error);
     // Don't fail the invitation if email fails, but log it
   }
 
@@ -150,10 +156,11 @@ router.get('/', asyncHandler(async (req: AuthenticatedRequest, res) => {
   const firestore = getFirestoreClient();
 
   // Get all invitations for the organization
+  // TODO: Re-enable orderBy once Firestore index is created
   const invitationsQuery = await firestore
     .collection('invitations')
     .where('organization_id', '==', user.organization_id)
-    .orderBy('created_at', 'desc')
+    // .orderBy('created_at', 'desc') // Temporarily disabled - requires composite index
     .get();
 
   const invitations = await Promise.all(
@@ -176,13 +183,21 @@ router.get('/', asyncHandler(async (req: AuthenticatedRequest, res) => {
         status: invitationData.status,
         invited_by: inviterName,
         expires_at: invitationData.expires_at?.toDate?.()?.toISOString() || null,
-        created_at: invitationData.created_at?.toDate?.()?.toISOString() || null
+        created_at: invitationData.created_at?.toDate?.()?.toISOString() || null,
+        _sortDate: invitationData.created_at?.toDate?.() || new Date(0) // For client-side sorting
       };
     })
   );
 
+  // Sort by created_at descending (newest first) - client-side sorting until index is ready
+  const sortedInvitations = invitations.sort((a, b) => {
+    const dateA = new Date(a.created_at || 0).getTime();
+    const dateB = new Date(b.created_at || 0).getTime();
+    return dateB - dateA; // Descending order
+  });
+
   res.json({
-    invitations
+    invitations: sortedInvitations
   });
 }));
 

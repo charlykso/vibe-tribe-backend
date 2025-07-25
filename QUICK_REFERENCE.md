@@ -1,4 +1,4 @@
-# VibeTribe - Quick Reference Guide
+# Tribe - Quick Reference Guide
 
 ## 🚀 Live Application URLs
 

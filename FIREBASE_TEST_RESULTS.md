@@ -2,7 +2,7 @@
 
 ## ✅ **FIREBASE FULLY OPERATIONAL**
 
-Your Firebase backend for VibeTribe is **completely configured and working**!
+Your Firebase backend for Tribe is **completely configured and working**!
 
 ---
 

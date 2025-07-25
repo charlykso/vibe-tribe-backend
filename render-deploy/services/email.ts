@@ -148,9 +148,7 @@ export class EmailService {
   // Email verification
   async sendVerificationEmail(email: string, verificationToken: string, userName: string): Promise<{ success: boolean; error?: string }> {
     // Use production URL if available, otherwise fallback to localhost
-    const frontendUrl = process.env.FRONTEND_URL ||
-                       process.env.CORS_ORIGIN?.split(',')[0] ||
-                       'https://vibe-tribe-manager.netlify.app';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8081';
     const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
 
     const template = this.getVerificationEmailTemplate(userName, verificationUrl);
@@ -168,9 +166,7 @@ export class EmailService {
   // Password reset email
   async sendPasswordResetEmail(email: string, resetToken: string, userName: string): Promise<{ success: boolean; error?: string }> {
     // Use production URL if available, otherwise fallback to localhost
-    const frontendUrl = process.env.FRONTEND_URL ||
-                       process.env.CORS_ORIGIN?.split(',')[0] ||
-                       'https://vibe-tribe-manager.netlify.app';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8081';
     const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
 
     const template = this.getPasswordResetEmailTemplate(userName, resetUrl);
@@ -193,9 +189,7 @@ export class EmailService {
     invitationToken: string
   ): Promise<{ success: boolean; error?: string }> {
     // Use production URL if available, otherwise fallback to localhost
-    const frontendUrl = process.env.FRONTEND_URL ||
-                       process.env.CORS_ORIGIN?.split(',')[0] ||
-                       'https://vibe-tribe-manager.netlify.app';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8081';
     const invitationUrl = `${frontendUrl}/accept-invitation?token=${invitationToken}`;
 
     const template = this.getInvitationEmailTemplate(inviterName, organizationName, invitationUrl);
@@ -213,10 +207,10 @@ export class EmailService {
   // Email templates
   private getVerificationEmailTemplate(userName: string, verificationUrl: string): EmailTemplate {
     return {
-      subject: 'Verify your VibeTribe account',
+      subject: 'Verify your Tribe account',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #333;">Welcome to VibeTribe, ${userName}!</h2>
+          <h2 style="color: #333;">Welcome to Tribe, ${userName}!</h2>
           <p>Thank you for signing up. Please verify your email address to complete your registration.</p>
           <div style="text-align: center; margin: 30px 0;">
             <a href="${verificationUrl}" 

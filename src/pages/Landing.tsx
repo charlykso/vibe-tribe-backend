@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { TribeLogo } from '@/components/ui/TribeLogo';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
   Users,
   BarChart3,
@@ -13,10 +14,14 @@ import {
   MessageSquare,
   Star,
   ArrowRight,
-  Play
+  Play,
+  Menu,
+  X
 } from 'lucide-react';
 
 export const Landing = () => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   const features = [
     {
       icon: Users,

@@ -50,7 +50,7 @@ const mockMessages: Message[] = [
       avatar: '/api/placeholder/32/32',
       verified: false
     },
-    content: 'Hey @vibetrybe, loving the new features! When will the mobile app be available?',
+    content: 'Hey @tribe, loving the new features! When will the mobile app be available?',
     timestamp: new Date(Date.now() - 15 * 60 * 1000),
     isRead: false,
     isStarred: false,

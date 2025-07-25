@@ -1,8 +1,8 @@
-# VibeTribe Frontend Documentation
+# Tribe Frontend Documentation
 
 ## 🎯 Overview
 
-The VibeTribe frontend is a modern React application built with TypeScript, providing a comprehensive social media management interface. It features a responsive design with dark mode support, real-time updates, and an intuitive user experience.
+The Tribe frontend is a modern React application built with TypeScript, providing a comprehensive social media management interface. It features a responsive design with dark mode support, real-time updates, and an intuitive user experience.
 
 ## 🛠 Technology Stack
 

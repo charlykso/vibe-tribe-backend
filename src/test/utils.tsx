@@ -20,7 +20,7 @@ export const mockOrganization = {
   members: [mockUser.uid],
 }
 
-// Mock social accounts
+// Mock social accounts - for testing only
 export const mockSocialAccounts = [
   {
     id: 'twitter-1',
@@ -28,7 +28,7 @@ export const mockSocialAccounts = [
     username: 'testuser',
     isConnected: true,
     profilePicture: 'https://example.com/avatar.jpg',
-    followerCount: 1000,
+    followerCount: 0, // Real data will be fetched from API
   },
   {
     id: 'linkedin-1',
@@ -36,7 +36,7 @@ export const mockSocialAccounts = [
     username: 'Test User',
     isConnected: true,
     profilePicture: 'https://example.com/avatar.jpg',
-    followerCount: 500,
+    followerCount: 0, // Real data will be fetched from API
   },
 ]
 
@@ -62,15 +62,15 @@ export const mockPosts = [
   },
 ]
 
-// Mock analytics data
+// Mock analytics data - for testing only
 export const mockAnalytics = {
-  totalPosts: 25,
-  totalEngagement: 1250,
-  followerGrowth: 15,
+  totalPosts: 0, // Real data will be fetched from API
+  totalEngagement: 0, // Real data will be fetched from API
+  followerGrowth: 0, // Real data will be fetched from API
   topPerformingPost: mockPosts[0],
   platformStats: {
-    twitter: { posts: 15, engagement: 800, followers: 1000 },
-    linkedin: { posts: 10, engagement: 450, followers: 500 },
+    twitter: { posts: 0, engagement: 0, followers: 0 }, // Real data will be fetched from API
+    linkedin: { posts: 0, engagement: 0, followers: 0 }, // Real data will be fetched from API
   },
 }
 

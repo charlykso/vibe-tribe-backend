@@ -147,10 +147,8 @@ export class EmailService {
 
   // Email verification
   async sendVerificationEmail(email: string, verificationToken: string, userName: string): Promise<{ success: boolean; error?: string }> {
-    // Use production URL if available, otherwise fallback to localhost
-    const frontendUrl = process.env.FRONTEND_URL ||
-                       process.env.CORS_ORIGIN?.split(',')[0] ||
-                       'https://vibe-tribe-manager.netlify.app';
+    // Use FRONTEND_URL from environment variables
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8081';
     const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
 
     const template = this.getVerificationEmailTemplate(userName, verificationUrl);
@@ -167,10 +165,8 @@ export class EmailService {
 
   // Password reset email
   async sendPasswordResetEmail(email: string, resetToken: string, userName: string): Promise<{ success: boolean; error?: string }> {
-    // Use production URL if available, otherwise fallback to localhost
-    const frontendUrl = process.env.FRONTEND_URL ||
-                       process.env.CORS_ORIGIN?.split(',')[0] ||
-                       'https://vibe-tribe-manager.netlify.app';
+    // Use FRONTEND_URL from environment variables
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8081';
     const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
 
     const template = this.getPasswordResetEmailTemplate(userName, resetUrl);
@@ -192,10 +188,8 @@ export class EmailService {
     organizationName: string,
     invitationToken: string
   ): Promise<{ success: boolean; error?: string }> {
-    // Use production URL if available, otherwise fallback to localhost
-    const frontendUrl = process.env.FRONTEND_URL ||
-                       process.env.CORS_ORIGIN?.split(',')[0] ||
-                       'https://vibe-tribe-manager.netlify.app';
+    // Use FRONTEND_URL from environment variables
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8081';
     const invitationUrl = `${frontendUrl}/accept-invitation?token=${invitationToken}`;
 
     const template = this.getInvitationEmailTemplate(inviterName, organizationName, invitationUrl);

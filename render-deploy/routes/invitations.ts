@@ -150,10 +150,11 @@ router.get('/', asyncHandler(async (req: AuthenticatedRequest, res) => {
   const firestore = getFirestoreClient();
 
   // Get all invitations for the organization
+  // TODO: Re-enable orderBy once Firestore index is created
   const invitationsQuery = await firestore
     .collection('invitations')
     .where('organization_id', '==', user.organization_id)
-    .orderBy('created_at', 'desc')
+    // .orderBy('created_at', 'desc') // Temporarily disabled - requires composite index
     .get();
 
   const invitations = await Promise.all(
@@ -181,8 +182,15 @@ router.get('/', asyncHandler(async (req: AuthenticatedRequest, res) => {
     })
   );
 
+  // Sort by created_at descending (newest first) - client-side sorting until index is ready
+  const sortedInvitations = invitations.sort((a, b) => {
+    const dateA = new Date(a.created_at || 0).getTime();
+    const dateB = new Date(b.created_at || 0).getTime();
+    return dateB - dateA; // Descending order
+  });
+
   res.json({
-    invitations
+    invitations: sortedInvitations
   });
 }));
 

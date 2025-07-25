@@ -25,6 +25,7 @@ interface OAuthResult {
   success: boolean;
   account?: Partial<SocialAccount>;
   error?: string;
+  details?: any;
 }
 
 interface TokenStorage {

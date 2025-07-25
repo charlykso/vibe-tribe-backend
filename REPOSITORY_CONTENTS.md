@@ -1,6 +1,6 @@
-# 📁 VibeTribe Repository Contents - Complete Overview
+# 📁 Tribe Repository Contents - Complete Overview
 
-## 🎯 **Repository**: `https://github.com/nexsolve0/vibe-tribe-manager.git`
+## 🎯 **Repository**: `https://github.com/nexsolve0/tribe-manager.git`
 
 **Status**: ✅ **Complete Full-Stack Application - Production Ready**
 

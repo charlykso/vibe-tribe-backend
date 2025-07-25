@@ -136,7 +136,7 @@ export const initializeWebSocket = (io: SocketIOServer): void => {
 
     // Send welcome message
     socket.emit('connected', {
-      message: 'Connected to VibeTribe WebSocket',
+      message: 'Connected to Tribe WebSocket',
       user: {
         id: socket.user.id,
         name: socket.user.name,

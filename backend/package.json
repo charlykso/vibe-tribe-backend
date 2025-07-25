@@ -5,7 +5,8 @@
   "type": "module",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch src/debug-server.ts",
+    "dev-full": "tsx watch src/server.ts",
     "build": "tsc --skipLibCheck || echo 'Build completed with warnings'",
     "build:strict": "tsc",
     "start": "node dist/server.js",
@@ -36,6 +37,7 @@
   "author": "Tribe Team",
   "license": "MIT",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@sendgrid/mail": "^8.1.5",
     "@types/joi": "^17.2.2",
     "@types/validator": "^13.15.1",
