@@ -7,9 +7,13 @@ import { Server as SocketIOServer } from 'socket.io';
 // Load environment variables
 dotenv.config();
 
+console.log('🔧 Starting Tribe Backend...');
+console.log('📁 Environment loaded');
+
+console.log('📦 Loading routes...');
+
 // Import routes
 import authRoutes from './routes/auth.js';
-import googleAuthRoutes from './routes/googleAuth.js';
 import oauthRoutes from './routes/oauth.js';
 import invitationRoutes from './routes/invitations.js';
 import userRoutes from './routes/users.js';
@@ -18,9 +22,9 @@ import postsRoutes from './routes/posts.js';
 import analyticsRoutes from './routes/analytics.js';
 import mediaRoutes from './routes/media.js';
 // Phase 3 routes
-import communitiesRoutes from './routes/communities.js';
-import moderationRoutes from './routes/moderation.js';
-import aiRoutes from './routes/ai.js';
+// import communitiesRoutes from './routes/communities.js'; // Temporarily disabled
+// import moderationRoutes from './routes/moderation.js'; // Temporarily disabled
+// import aiRoutes from './routes/ai.js'; // Temporarily disabled for debugging
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -33,9 +37,9 @@ import { comprehensiveSecurityHeaders } from './middleware/securityHeaders.js';
 
 // Import services
 import { initializeDatabase, initializeCollections } from './services/database.js';
-import { initializeWebSocket } from './services/websocket.js';
-import { initializeQueues, shutdownQueues } from './services/queue.js';
-import { initializeCronJobs, stopCronJobs } from './services/cron.js';
+// import { initializeWebSocket } from './services/websocket.js'; // Temporarily disabled
+// import { initializeQueues, shutdownQueues } from './services/queue.js'; // Temporarily disabled
+// import { initializeCronJobs, stopCronJobs } from './services/cron.js'; // Temporarily disabled
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -49,12 +53,12 @@ const corsOrigins = process.env.CORS_ORIGIN
   : ["http://localhost:8080"];
 
 const server = createServer(app);
-const io = new SocketIOServer(server, {
-  cors: {
-    origin: corsOrigins,
-    methods: ["GET", "POST"]
-  }
-});
+// const io = new SocketIOServer(server, { // Temporarily disabled
+//   cors: {
+//     origin: corsOrigins,
+//     methods: ["GET", "POST"]
+//   }
+// });
 
 app.use(cors({
   origin: corsOrigins,
@@ -110,22 +114,11 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
-// Health check endpoint
-app.get('/api/v1/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    version: '1.0.0',
-    googleAuthEnabled: !!process.env.GOOGLE_CLIENT_ID
-  });
-});
-
 // CSRF token endpoint
 app.get('/api/v1/csrf-token', getCsrfToken);
 
 // API routes
 app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/auth/google', googleAuthRoutes);
 app.use('/api/v1/oauth', oauthRoutes);
 app.use('/api/v1/invitations', invitationRoutes);
 app.use('/api/v1/users', authMiddleware, userRoutes);
@@ -133,10 +126,10 @@ app.use('/api/v1/social-accounts', authMiddleware, socialAccountRoutes);
 app.use('/api/v1/posts', authMiddleware, postsRoutes);
 app.use('/api/v1/analytics', authMiddleware, analyticsRoutes);
 app.use('/api/v1/media', authMiddleware, mediaRoutes);
-// Phase 3 routes (enabled for community management)
-app.use('/api/v1/communities', authMiddleware, communitiesRoutes);
-app.use('/api/v1/moderation', authMiddleware, moderationRoutes);
-app.use('/api/v1/ai', authMiddleware, aiRoutes);
+// Phase 3 routes (temporarily disabled)
+// app.use('/api/v1/communities', authMiddleware, communitiesRoutes);
+// app.use('/api/v1/moderation', authMiddleware, moderationRoutes);
+// app.use('/api/v1/ai', authMiddleware, aiRoutes); // Temporarily disabled for debugging
 
 // 404 handler for API routes
 app.use('/api/*', (req, res) => {
@@ -153,6 +146,8 @@ app.use(errorHandler);
 // Initialize services
 async function startServer() {
   try {
+    console.log('🚀 Starting server...');
+
     // Initialize Firebase database connection
     await initializeDatabase();
     console.log('✅ Firebase database initialized successfully');
@@ -161,24 +156,18 @@ async function startServer() {
     await initializeCollections();
     console.log('✅ Firestore collections initialized successfully');
 
-    // Initialize WebSocket
-    initializeWebSocket(io);
-    console.log('✅ WebSocket initialized successfully');
+    console.log('⚠️ WebSocket, Queues, and Cron jobs disabled for debugging');
 
-    // Initialize Queues
-    initializeQueues();
-    console.log('✅ Queue system initialized successfully');
-
-    // Initialize Cron Jobs
-    initializeCronJobs();
-    console.log('✅ Cron jobs initialized successfully');
-
-    // Start server
-    server.listen(PORT, () => {
+    // Start server on IPv4 localhost
+    server.listen(Number(PORT), '127.0.0.1', () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/health`);
       console.log(`🔗 API base URL: http://localhost:${PORT}/api/v1`);
       console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+
+    server.on('error', (error) => {
+      console.error('❌ Server error:', error);
     });
 
   } catch (error) {
@@ -190,8 +179,8 @@ async function startServer() {
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down gracefully');
-  stopCronJobs();
-  await shutdownQueues();
+  // stopCronJobs(); // Disabled
+  // await shutdownQueues(); // Disabled
   server.close(() => {
     console.log('Process terminated');
   });
@@ -199,8 +188,8 @@ process.on('SIGTERM', async () => {
 
 process.on('SIGINT', async () => {
   console.log('SIGINT received, shutting down gracefully');
-  stopCronJobs();
-  await shutdownQueues();
+  // stopCronJobs(); // Disabled
+  // await shutdownQueues(); // Disabled
   server.close(() => {
     console.log('Process terminated');
   });
@@ -209,4 +198,4 @@ process.on('SIGINT', async () => {
 // Start the server
 startServer();
 
-export { app, io };
+export { app }; // io temporarily disabled
