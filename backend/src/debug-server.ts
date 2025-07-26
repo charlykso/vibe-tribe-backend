@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { initializeDatabase, initializeCollections } from './services/database.js';
 
 // Load environment variables
 dotenv.config();
@@ -45,12 +46,12 @@ app.get('/api/v1/status', (req, res) => {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
     features: {
-      auth: 'placeholder (requires database)',
-      oauth: 'placeholder (requires database)',
-      posts: 'placeholder (requires database)',
-      analytics: 'placeholder (requires database)',
-      ai: 'placeholder (requires database)',
-      database: 'disabled',
+      auth: 'enabled',
+      oauth: 'placeholder (requires additional setup)',
+      posts: 'placeholder (requires additional setup)',
+      analytics: 'placeholder (requires additional setup)',
+      ai: 'placeholder (requires additional setup)',
+      database: 'enabled',
       websocket: 'disabled',
       cron: 'disabled'
     }
@@ -64,41 +65,13 @@ console.log('✅ Status endpoint configured');
 // Try importing routes one by one
 console.log('📦 Loading routes...');
 
-// Auth routes require database - add placeholder endpoints
-console.log('⚠️ Auth routes skipped (require database initialization)');
+// Import auth routes
+console.log('📦 Loading auth routes...');
+import authRoutes from './routes/auth.js';
 
-// Add placeholder auth endpoints
-app.post('/api/v1/auth/login', (req, res) => {
-  res.json({
-    message: 'Login requires database initialization',
-    status: 'disabled',
-    note: 'Enable database to authenticate users'
-  });
-});
-
-app.post('/api/v1/auth/register', (req, res) => {
-  res.json({
-    message: 'Registration requires database initialization',
-    status: 'disabled',
-    note: 'Enable database to register new users'
-  });
-});
-
-app.get('/api/v1/auth/test', (req, res) => {
-  res.json({
-    message: 'Auth routes are available but require database',
-    status: 'disabled',
-    note: 'Enable database for full authentication functionality'
-  });
-});
-
-app.get('/api/v1/auth/*', (req, res) => {
-  res.json({
-    message: 'Auth functionality requires database initialization',
-    status: 'disabled',
-    note: 'Enable database for authentication features'
-  });
-});
+// Add auth routes
+app.use('/api/v1/auth', authRoutes);
+console.log('✅ Auth routes loaded');
 
 // OAuth routes require database - add placeholder endpoints
 console.log('⚠️ OAuth routes skipped (require database initialization)');
@@ -191,15 +164,36 @@ app.use('*', (req, res) => {
 
 console.log('✅ Error handlers configured');
 
-// Start server
-console.log('🚀 Starting server...');
+// Initialize services and start server
+async function startServer() {
+  try {
+    console.log('🚀 Starting server...');
 
-app.listen(Number(PORT), '0.0.0.0', () => {
-  console.log(`🚀 Tribe Backend running on port ${PORT} (Development Mode)`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
-  console.log(`🔗 API status: http://localhost:${PORT}/api/v1/status`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+    // Initialize Firebase database connection
+    await initializeDatabase();
+    console.log('✅ Firebase database initialized successfully');
+
+    // Initialize Firestore collections
+    await initializeCollections();
+    console.log('✅ Firestore collections initialized successfully');
+
+    // Start server on IPv4 localhost
+    app.listen(Number(PORT), '127.0.0.1', () => {
+      console.log(`🚀 Tribe Backend running on port ${PORT} (Development Mode)`);
+      console.log(`📊 Health check: http://localhost:${PORT}/health`);
+      console.log(`🔗 API status: http://localhost:${PORT}/api/v1/status`);
+      console.log(`🔗 Auth login: http://localhost:${PORT}/api/v1/auth/login`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+// Start the server
+startServer();
 
 // Handle graceful shutdown
 process.on('SIGTERM', () => {

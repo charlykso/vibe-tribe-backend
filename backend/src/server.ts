@@ -36,7 +36,7 @@ import { smartRateLimit, clearRateLimitStore } from './middleware/advancedRateLi
 import { comprehensiveSecurityHeaders } from './middleware/securityHeaders.js';
 
 // Import services
-// import { initializeDatabase, initializeCollections } from './services/database.js'; // Temporarily disabled
+import { initializeDatabase, initializeCollections } from './services/database.js';
 // import { initializeWebSocket } from './services/websocket.js'; // Temporarily disabled
 // import { initializeQueues, shutdownQueues } from './services/queue.js'; // Temporarily disabled
 // import { initializeCronJobs, stopCronJobs } from './services/cron.js'; // Temporarily disabled
@@ -146,16 +146,28 @@ app.use(errorHandler);
 // Initialize services
 async function startServer() {
   try {
-    console.log('🚀 Starting server in minimal mode...');
-    console.log('⚠️ Database, WebSocket, Queues, and Cron jobs disabled for debugging');
+    console.log('🚀 Starting server...');
 
-    // Start server on all network interfaces for testing
-    server.listen(Number(PORT), '0.0.0.0', () => {
+    // Initialize Firebase database connection
+    await initializeDatabase();
+    console.log('✅ Firebase database initialized successfully');
+
+    // Initialize Firestore collections
+    await initializeCollections();
+    console.log('✅ Firestore collections initialized successfully');
+
+    console.log('⚠️ WebSocket, Queues, and Cron jobs disabled for debugging');
+
+    // Start server on IPv4 localhost
+    server.listen(Number(PORT), '127.0.0.1', () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/health`);
       console.log(`🔗 API base URL: http://localhost:${PORT}/api/v1`);
       console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🌍 Network access: http://0.0.0.0:${PORT}/api/v1`);
+    });
+
+    server.on('error', (error) => {
+      console.error('❌ Server error:', error);
     });
 
   } catch (error) {
