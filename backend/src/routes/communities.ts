@@ -54,15 +54,39 @@ const ingestMessageSchema = z.object({
 // GET /api/v1/communities - Get all communities for organization
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const { organization_id } = req.user!;
+    console.log('🔍 Communities route accessed');
+    console.log('🔍 User object:', req.user);
+
+    if (!req.user) {
+      console.error('❌ No user found in request');
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+      return;
+    }
+
+    let { organization_id } = req.user;
+    console.log('🔍 Organization ID from user:', organization_id);
+
+    // Temporary fix: use sample organization ID if user doesn't have one
+    if (!organization_id) {
+      console.log('⚠️ No organization_id found for user, using sample organization');
+      organization_id = 'qr7kzSMQ3uQZXbHKlw9o'; // Sample organization ID from seed data
+    }
+
+    console.log('🔍 Fetching communities for organization:', organization_id);
     const communities = await communityService.getCommunities(organization_id);
+    console.log('✅ Communities fetched:', communities.length);
 
     res.json({
       success: true,
-      data: communities
+      data: {
+        communities: communities
+      }
     });
   } catch (error) {
-    console.error('Error fetching communities:', error);
+    console.error('❌ Error fetching communities:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch communities'
@@ -191,18 +215,27 @@ router.get('/:id/members', authMiddleware, async (req, res) => {
     const { id } = req.params;
     const { limit = 50, offset = 0 } = req.query;
 
+    console.log('🔍 Community members route accessed');
+    console.log('🔍 Community ID:', id);
+    console.log('🔍 Limit:', limit, 'Offset:', offset);
+
     const members = await communityService.getCommunityMembers(
       id,
       parseInt(limit as string),
       parseInt(offset as string)
     );
 
+    console.log('✅ Community members fetched:', members.length);
+
     res.json({
       success: true,
-      data: members
+      data: {
+        members: members,
+        total: members.length
+      }
     });
   } catch (error) {
-    console.error('Error fetching community members:', error);
+    console.error('❌ Error fetching community members:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch community members'

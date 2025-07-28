@@ -24,6 +24,11 @@ class ApiClient {
     this.defaultHeaders = {
       'Content-Type': 'application/json',
     };
+
+    // Debug logging
+    console.log('🔧 API Client Configuration:');
+    console.log('  VITE_API_URL:', import.meta.env.VITE_API_URL);
+    console.log('  baseURL:', this.baseURL);
   }
 
   private async request<T>(
@@ -31,7 +36,11 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
-    
+
+    // Debug logging
+    console.log('🌐 API Request:', options.method || 'GET', url);
+    console.log('🔑 Auth headers:', headers.Authorization ? 'Present' : 'Missing');
+
     // Get auth token if available
     const token = AuthService.getTokenFromStorage();
     const headers = {
@@ -50,7 +59,9 @@ class ApiClient {
         headers,
       });
 
+      console.log('📡 API Response:', response.status, response.statusText);
       const data = await response.json();
+      console.log('📦 API Data:', data);
 
       if (!response.ok) {
         throw {

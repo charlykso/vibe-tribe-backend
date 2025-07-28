@@ -38,21 +38,44 @@ export class CommunityService {
 
   async getCommunities(organizationId: string): Promise<Community[]> {
     try {
+      console.log('🔍 CommunityService.getCommunities called with organizationId:', organizationId);
       const db = getFirestoreClient();
+
+      // Simple query with just organization_id to avoid index issues
+      console.log('🔍 Querying communities collection...');
       const snapshot = await db
         .collection('communities')
         .where('organization_id', '==', organizationId)
-        .where('is_active', '==', true)
-        .orderBy('created_at', 'desc')
         .get();
 
-      return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Community[];
+      console.log('🔍 Raw query result - docs found:', snapshot.docs.length);
+
+      // Filter active communities and sort in memory
+      const communities = snapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        .filter(community => community.is_active !== false) // Include if is_active is true or undefined
+        .sort((a, b) => {
+          // Sort by created_at descending
+          const aDate = new Date(a.created_at || 0);
+          const bDate = new Date(b.created_at || 0);
+          return bDate.getTime() - aDate.getTime();
+        }) as Community[];
+
+      console.log('✅ Filtered and sorted communities:', communities.length);
+      console.log('🔍 Communities data:', communities.map(c => ({ id: c.id, name: c.name, platform: c.platform })));
+
+      return communities;
     } catch (error) {
-      console.error('Error fetching communities:', error);
-      throw new Error('Failed to fetch communities');
+      console.error('❌ Error in getCommunities:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      });
+      throw error; // Re-throw the original error for better debugging
     }
   }
 
@@ -131,23 +154,48 @@ export class CommunityService {
 
   async getCommunityMembers(communityId: string, limit = 50, offset = 0): Promise<CommunityMember[]> {
     try {
+      console.log('🔍 CommunityService.getCommunityMembers called with communityId:', communityId);
       const db = getFirestoreClient();
+
+      // Simplified query to avoid index issues
+      console.log('🔍 Querying community_members collection...');
       const snapshot = await db
         .collection('community_members')
         .where('community_id', '==', communityId)
-        .where('is_active', '==', true)
-        .orderBy('engagement_score', 'desc')
-        .limit(limit)
-        .offset(offset)
         .get();
 
-      return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as CommunityMember[];
+      console.log('🔍 Raw members query result - docs found:', snapshot.docs.length);
+
+      // Filter, sort, and paginate in memory
+      const allMembers = snapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        .filter(member => member.is_active !== false); // Include if is_active is true or undefined
+
+      // Sort by engagement_score descending
+      allMembers.sort((a, b) => {
+        const aScore = a.engagement_score || 0;
+        const bScore = b.engagement_score || 0;
+        return bScore - aScore;
+      });
+
+      // Apply pagination
+      const paginatedMembers = allMembers.slice(offset, offset + limit) as CommunityMember[];
+
+      console.log('✅ Filtered, sorted, and paginated members:', paginatedMembers.length);
+      console.log('🔍 Members data:', paginatedMembers.map(m => ({ id: m.id, username: m.username, engagement_score: m.engagement_score })));
+
+      return paginatedMembers;
     } catch (error) {
-      console.error('Error fetching community members:', error);
-      throw new Error('Failed to fetch community members');
+      console.error('❌ Error in getCommunityMembers:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      });
+      throw error; // Re-throw the original error for better debugging
     }
   }
 
