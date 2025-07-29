@@ -50,9 +50,12 @@ const PORT = process.env.PORT || 3001;
 app.use(...comprehensiveSecurityHeaders());
 
 // CORS configuration
-const corsOrigins = process.env.CORS_ORIGIN 
+const corsOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
-  : ["http://localhost:8080"];
+  : [
+      "http://localhost:8080",
+      "https://vibe-tribe-manager.netlify.app"
+    ];
 
 const server = createServer(app);
 const io = new SocketIOServer(server, {
