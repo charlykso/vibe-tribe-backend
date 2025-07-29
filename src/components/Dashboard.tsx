@@ -1,44 +1,102 @@
 
 import React from 'react';
-import { TrendingUp, Users, MessageSquare, Heart, AlertTriangle, CheckCircle } from 'lucide-react';
+import { TrendingUp, Users, MessageSquare, Heart, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BackendStatus } from '@/components/BackendStatus';
+import { useQuery } from '@tanstack/react-query';
+import { CommunitiesService } from '@/lib/services/communities';
 
 export const Dashboard = () => {
-  const stats = [
-    {
-      title: 'Total Members',
-      value: '24,847',
-      change: '+12.5%',
-      trend: 'up',
-      icon: Users,
-      color: 'text-blue-600'
-    },
-    {
-      title: 'Active Members',
-      value: '18,492',
-      change: '+8.2%',
-      trend: 'up',
-      icon: TrendingUp,
-      color: 'text-green-600'
-    },
-    {
-      title: 'Messages Today',
-      value: '3,847',
-      change: '+23.1%',
-      trend: 'up',
-      icon: MessageSquare,
-      color: 'text-purple-600'
-    },
-    {
-      title: 'Engagement Rate',
-      value: '74.8%',
-      change: '+4.3%',
-      trend: 'up',
-      icon: Heart,
-      color: 'text-pink-600'
+  // Fetch communities data
+  const {
+    data: communitiesData,
+    isLoading: communitiesLoading,
+    error: communitiesError
+  } = useQuery({
+    queryKey: ['communities'],
+    queryFn: () => CommunitiesService.getCommunities(),
+    select: (response) => response.data?.communities || []
+  });
+
+  // Calculate stats from real data
+  const stats = React.useMemo(() => {
+    if (!communitiesData || communitiesData.length === 0) {
+      return [
+        {
+          title: 'Total Members',
+          value: communitiesLoading ? '...' : '0',
+          change: '+0%',
+          trend: 'up',
+          icon: Users,
+          color: 'text-blue-600'
+        },
+        {
+          title: 'Active Members',
+          value: communitiesLoading ? '...' : '0',
+          change: '+0%',
+          trend: 'up',
+          icon: TrendingUp,
+          color: 'text-green-600'
+        },
+        {
+          title: 'Messages Total',
+          value: communitiesLoading ? '...' : '0',
+          change: '+0%',
+          trend: 'up',
+          icon: MessageSquare,
+          color: 'text-purple-600'
+        },
+        {
+          title: 'Avg Engagement',
+          value: communitiesLoading ? '...' : '0%',
+          change: '+0%',
+          trend: 'up',
+          icon: Heart,
+          color: 'text-pink-600'
+        }
+      ];
     }
-  ];
+
+    const totalMembers = communitiesData.reduce((sum, community) => sum + (community.member_count || 0), 0);
+    const activeMembers = communitiesData.reduce((sum, community) => sum + (community.active_member_count || 0), 0);
+    const totalMessages = communitiesData.reduce((sum, community) => sum + (community.message_count || 0), 0);
+    const avgEngagement = communitiesData.reduce((sum, community) => sum + (community.engagement_rate || 0), 0) / communitiesData.length;
+
+    return [
+      {
+        title: 'Total Members',
+        value: totalMembers.toLocaleString(),
+        change: '+12.5%',
+        trend: 'up',
+        icon: Users,
+        color: 'text-blue-600'
+      },
+      {
+        title: 'Active Members',
+        value: activeMembers.toLocaleString(),
+        change: '+8.2%',
+        trend: 'up',
+        icon: TrendingUp,
+        color: 'text-green-600'
+      },
+      {
+        title: 'Messages Total',
+        value: totalMessages.toLocaleString(),
+        change: '+23.1%',
+        trend: 'up',
+        icon: MessageSquare,
+        color: 'text-purple-600'
+      },
+      {
+        title: 'Avg Engagement',
+        value: `${avgEngagement.toFixed(1)}%`,
+        change: '+4.3%',
+        trend: 'up',
+        icon: Heart,
+        color: 'text-pink-600'
+      }
+    ];
+  }, [communitiesData, communitiesLoading]);
 
   const recentActivity = [
     { type: 'new_member', message: 'John Smith joined the community', time: '2 minutes ago', icon: Users },
@@ -47,11 +105,19 @@ export const Dashboard = () => {
     { type: 'milestone', message: 'Community reached 25K members!', time: '1 hour ago', icon: CheckCircle },
   ];
 
-  const communities = [
-    { name: 'Discord Community', members: 15420, status: 'healthy', growth: '+5.2%' },
-    { name: 'Telegram Group', members: 8947, status: 'growing', growth: '+12.8%' },
-    { name: 'Slack Workspace', members: 2340, status: 'stable', growth: '+2.1%' },
-  ];
+  // Use real communities data for the communities section
+  const communities = React.useMemo(() => {
+    if (!communitiesData || communitiesData.length === 0) {
+      return [];
+    }
+
+    return communitiesData.map(community => ({
+      name: community.name,
+      members: community.member_count || 0,
+      status: community.health_score > 80 ? 'healthy' : community.health_score > 60 ? 'growing' : 'stable',
+      growth: `+${(Math.random() * 15).toFixed(1)}%` // Mock growth data for now
+    }));
+  }, [communitiesData]);
 
   return (
     <div className="space-y-6">
@@ -121,12 +187,26 @@ export const Dashboard = () => {
             <CardTitle className="text-gray-900 dark:text-white">Communities</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {communities.map((community, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{community.name}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{community.members.toLocaleString()} members</p>
+            {communitiesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                <span className="ml-2 text-gray-500">Loading communities...</span>
+              </div>
+            ) : communitiesError ? (
+              <div className="text-center py-8">
+                <p className="text-red-600 dark:text-red-400">Failed to load communities</p>
+              </div>
+            ) : communities.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500 dark:text-gray-400">No communities found</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {communities.map((community, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{community.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{community.members.toLocaleString()} members</p>
                   </div>
                   <div className="text-right">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -138,9 +218,10 @@ export const Dashboard = () => {
                     </span>
                     <p className="text-xs text-green-600 mt-1">{community.growth}</p>
                   </div>
-                </div>
-              ))}
-            </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
