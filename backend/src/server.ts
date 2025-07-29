@@ -24,7 +24,7 @@ import mediaRoutes from './routes/media.js';
 // Phase 3 routes
 import communitiesRoutes from './routes/communities.js';
 // import communityRoutes from './routes/community.js'; // Temporarily disabled for deployment
-import activityRoutes from './routes/activity.js';
+// import activityRoutes from './routes/activity.js'; // Temporarily disabled for deployment
 // import moderationRoutes from './routes/moderation.js'; // Temporarily disabled
 // import aiRoutes from './routes/ai.js'; // Temporarily disabled for debugging
 
@@ -131,7 +131,7 @@ app.use('/api/v1/media', authMiddleware, mediaRoutes);
 // Phase 3 routes
 app.use('/api/v1/communities', authMiddleware, communitiesRoutes);
 // app.use('/api/v1/community', authMiddleware, communityRoutes); // Temporarily disabled for deployment
-app.use('/api/v1/activity', authMiddleware, activityRoutes);
+// app.use('/api/v1/activity', authMiddleware, activityRoutes); // Temporarily disabled for deployment
 // app.use('/api/v1/moderation', authMiddleware, moderationRoutes); // Temporarily disabled
 // app.use('/api/v1/ai', authMiddleware, aiRoutes); // Temporarily disabled for debugging
 
