@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { initializeDatabase, getFirestoreClient, getServerTimestamp } from '../services/database.js';
 
 // Load environment variables

@@ -22,7 +22,9 @@ import postsRoutes from './routes/posts.js';
 import analyticsRoutes from './routes/analytics.js';
 import mediaRoutes from './routes/media.js';
 // Phase 3 routes
-// import communitiesRoutes from './routes/communities.js'; // Temporarily disabled
+import communitiesRoutes from './routes/communities.js';
+import communityRoutes from './routes/community.js';
+import activityRoutes from './routes/activity.js';
 // import moderationRoutes from './routes/moderation.js'; // Temporarily disabled
 // import aiRoutes from './routes/ai.js'; // Temporarily disabled for debugging
 
@@ -37,7 +39,7 @@ import { comprehensiveSecurityHeaders } from './middleware/securityHeaders.js';
 
 // Import services
 import { initializeDatabase, initializeCollections } from './services/database.js';
-// import { initializeWebSocket } from './services/websocket.js'; // Temporarily disabled
+import { initializeWebSocket } from './services/websocket.js';
 // import { initializeQueues, shutdownQueues } from './services/queue.js'; // Temporarily disabled
 // import { initializeCronJobs, stopCronJobs } from './services/cron.js'; // Temporarily disabled
 
@@ -53,12 +55,12 @@ const corsOrigins = process.env.CORS_ORIGIN
   : ["http://localhost:8080"];
 
 const server = createServer(app);
-// const io = new SocketIOServer(server, { // Temporarily disabled
-//   cors: {
-//     origin: corsOrigins,
-//     methods: ["GET", "POST"]
-//   }
-// });
+const io = new SocketIOServer(server, {
+  cors: {
+    origin: corsOrigins,
+    methods: ["GET", "POST"]
+  }
+});
 
 app.use(cors({
   origin: corsOrigins,
@@ -126,9 +128,11 @@ app.use('/api/v1/social-accounts', authMiddleware, socialAccountRoutes);
 app.use('/api/v1/posts', authMiddleware, postsRoutes);
 app.use('/api/v1/analytics', authMiddleware, analyticsRoutes);
 app.use('/api/v1/media', authMiddleware, mediaRoutes);
-// Phase 3 routes (temporarily disabled)
-// app.use('/api/v1/communities', authMiddleware, communitiesRoutes);
-// app.use('/api/v1/moderation', authMiddleware, moderationRoutes);
+// Phase 3 routes
+app.use('/api/v1/communities', authMiddleware, communitiesRoutes);
+app.use('/api/v1/community', authMiddleware, communityRoutes);
+app.use('/api/v1/activity', authMiddleware, activityRoutes);
+// app.use('/api/v1/moderation', authMiddleware, moderationRoutes); // Temporarily disabled
 // app.use('/api/v1/ai', authMiddleware, aiRoutes); // Temporarily disabled for debugging
 
 // 404 handler for API routes
@@ -156,11 +160,21 @@ async function startServer() {
     await initializeCollections();
     console.log('✅ Firestore collections initialized successfully');
 
-    console.log('⚠️ WebSocket, Queues, and Cron jobs disabled for debugging');
+    // Initialize WebSocket
+    try {
+      initializeWebSocket(io);
+      console.log('✅ WebSocket initialized successfully');
+    } catch (error) {
+      console.error('❌ WebSocket initialization failed:', error);
+      console.log('⚠️ Continuing without WebSocket...');
+    }
 
-    // Start server on IPv4 localhost
-    server.listen(Number(PORT), '127.0.0.1', () => {
-      console.log(`🚀 Server running on port ${PORT}`);
+    console.log('⚠️ Queues and Cron jobs disabled for debugging');
+
+    // Start server - bind to 0.0.0.0 for production, 127.0.0.1 for development
+    const host = process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1';
+    server.listen(Number(PORT), host, () => {
+      console.log(`🚀 Server running on ${host}:${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/health`);
       console.log(`🔗 API base URL: http://localhost:${PORT}/api/v1`);
       console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
@@ -198,4 +212,4 @@ process.on('SIGINT', async () => {
 // Start the server
 startServer();
 
-export { app }; // io temporarily disabled
+export { app, io };

@@ -55,14 +55,14 @@ export class CommunityService {
         .map(doc => ({
           id: doc.id,
           ...doc.data()
-        }))
+        } as Community))
         .filter(community => community.is_active !== false) // Include if is_active is true or undefined
         .sort((a, b) => {
           // Sort by created_at descending
-          const aDate = new Date(a.created_at || 0);
-          const bDate = new Date(b.created_at || 0);
+          const aDate = (a.created_at as any)?.toDate ? (a.created_at as any).toDate() : new Date((a.created_at as any) || 0);
+          const bDate = (b.created_at as any)?.toDate ? (b.created_at as any).toDate() : new Date((b.created_at as any) || 0);
           return bDate.getTime() - aDate.getTime();
-        }) as Community[];
+        });
 
       console.log('✅ Filtered and sorted communities:', communities.length);
       console.log('🔍 Communities data:', communities.map(c => ({ id: c.id, name: c.name, platform: c.platform })));
@@ -171,7 +171,7 @@ export class CommunityService {
         .map(doc => ({
           id: doc.id,
           ...doc.data()
-        }))
+        } as CommunityMember))
         .filter(member => member.is_active !== false); // Include if is_active is true or undefined
 
       // Sort by engagement_score descending
@@ -182,7 +182,7 @@ export class CommunityService {
       });
 
       // Apply pagination
-      const paginatedMembers = allMembers.slice(offset, offset + limit) as CommunityMember[];
+      const paginatedMembers = allMembers.slice(offset, offset + limit);
 
       console.log('✅ Filtered, sorted, and paginated members:', paginatedMembers.length);
       console.log('🔍 Members data:', paginatedMembers.map(m => ({ id: m.id, username: m.username, engagement_score: m.engagement_score })));
