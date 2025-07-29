@@ -1,15 +1,14 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import bcrypt from 'bcryptjs';
 import { getFirestoreClient, getServerTimestamp } from '../services/database.js';
 import { asyncHandler, ValidationError, UnauthorizedError, NotFoundError } from '../middleware/errorHandler.js';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth.js';
 import { emailService } from '../services/email.js';
 import { User, Organization } from '../types/database.js';
+import { GoogleOAuthService } from '../services/oauth.js';
 
 const router = Router();
-
-// Apply authentication to all routes
-router.use(authMiddleware);
 
 // Validation schemas
 const inviteUserSchema = z.object({
@@ -24,6 +23,11 @@ const acceptInvitationSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters')
 });
 
+const acceptInvitationGoogleSchema = z.object({
+  token: z.string().min(1, 'Invitation token is required'),
+  googleCode: z.string().min(1, 'Google authorization code is required')
+});
+
 // Helper function to generate invitation token
 const generateInvitationToken = (): string => {
   return Math.random().toString(36).substring(2, 15) +
@@ -31,9 +35,15 @@ const generateInvitationToken = (): string => {
          Date.now().toString(36);
 };
 
+// Helper function to hash password
+const hashPassword = async (password: string): Promise<string> => {
+  const rounds = parseInt(process.env.BCRYPT_ROUNDS || '12');
+  return bcrypt.hash(password, rounds);
+};
+
 // POST /api/v1/invitations/invite
 // Send invitation to join organization
-router.post('/invite', asyncHandler(async (req: AuthenticatedRequest, res) => {
+router.post('/invite', authMiddleware, asyncHandler(async (req: AuthenticatedRequest, res) => {
   const validation = inviteUserSchema.safeParse(req.body);
 
   if (!validation.success) {
@@ -141,7 +151,7 @@ router.post('/invite', asyncHandler(async (req: AuthenticatedRequest, res) => {
 
 // GET /api/v1/invitations
 // Get all invitations for the organization
-router.get('/', asyncHandler(async (req: AuthenticatedRequest, res) => {
+router.get('/', authMiddleware, asyncHandler(async (req: AuthenticatedRequest, res) => {
   const user = req.user!;
 
   if (!user.organization_id) {
@@ -201,6 +211,105 @@ router.get('/', asyncHandler(async (req: AuthenticatedRequest, res) => {
   });
 }));
 
+// POST /api/v1/invitations/accept-existing
+// Accept an invitation for existing user (authenticated endpoint)
+router.post('/accept-existing', authMiddleware, asyncHandler(async (req, res) => {
+  const { token } = req.body;
+  const user = req.user;
+
+  if (!token) {
+    throw new ValidationError('Invitation token is required');
+  }
+
+  const firestore = getFirestoreClient();
+
+  // Find invitation by token
+  const invitationQuery = await firestore
+    .collection('invitations')
+    .where('invitation_token', '==', token)
+    .where('status', '==', 'pending')
+    .where('email', '==', user.email) // Must match current user's email
+    .limit(1)
+    .get();
+
+  if (invitationQuery.empty) {
+    throw new ValidationError('Invalid invitation token or invitation not for this user');
+  }
+
+  const invitationDoc = invitationQuery.docs[0];
+  const invitation = invitationDoc.data();
+
+  // Check if invitation is expired
+  if (invitation.expires_at && new Date() > invitation.expires_at.toDate()) {
+    throw new ValidationError('Invitation has expired');
+  }
+
+  // Update user's organization and role
+  await firestore.collection('users').doc(user.id).update({
+    organization_id: invitation.organization_id,
+    role: invitation.role,
+    updated_at: getServerTimestamp()
+  });
+
+  // Add user to all communities in the organization
+  const communitiesSnapshot = await firestore
+    .collection('communities')
+    .where('organization_id', '==', invitation.organization_id)
+    .get();
+
+  console.log(`🔍 Adding user to ${communitiesSnapshot.docs.length} communities`);
+
+  for (const communityDoc of communitiesSnapshot.docs) {
+    // Check if user is already a member
+    const existingMemberQuery = await firestore
+      .collection('community_members')
+      .where('user_id', '==', user.id)
+      .where('community_id', '==', communityDoc.id)
+      .limit(1)
+      .get();
+
+    if (existingMemberQuery.empty) {
+      const communityMemberData = {
+        user_id: user.id,
+        community_id: communityDoc.id,
+        platform_user_id: `user_${user.id}`,
+        username: user.email.split('@')[0],
+        display_name: user.name,
+        avatar_url: user.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`,
+        roles: ['member'],
+        tags: [],
+        join_date: getServerTimestamp(),
+        last_activity: getServerTimestamp(),
+        message_count: 0,
+        engagement_score: 0,
+        sentiment_score: 0.5,
+        metadata: {
+          invitation_accepted: true,
+          joined_via: 'invitation'
+        },
+        is_active: true,
+        created_at: getServerTimestamp(),
+        updated_at: getServerTimestamp()
+      };
+
+      await firestore.collection('community_members').add(communityMemberData);
+      console.log(`✅ Added user to community: ${communityDoc.data().name}`);
+    }
+  }
+
+  // Update invitation status
+  await firestore.collection('invitations').doc(invitationDoc.id).update({
+    status: 'accepted',
+    accepted_at: getServerTimestamp(),
+    updated_at: getServerTimestamp()
+  });
+
+  res.json({
+    message: 'Invitation accepted successfully',
+    organization_id: invitation.organization_id
+  });
+}));
+
 // POST /api/v1/invitations/accept
 // Accept an invitation (public endpoint)
 router.post('/accept', asyncHandler(async (req, res) => {
@@ -241,13 +350,85 @@ router.post('/accept', asyncHandler(async (req, res) => {
     .get();
 
   if (!existingUserQuery.empty) {
-    throw new ValidationError('User with this email already exists');
+    const existingUser = existingUserQuery.docs[0].data();
+
+    // If user exists but in a different organization, add them to this organization
+    if (existingUser.organization_id !== invitation.organization_id) {
+      // Update user's organization (for now, we'll just update their organization)
+      // In a more complex system, you might want to support multiple organizations per user
+      await firestore.collection('users').doc(existingUserQuery.docs[0].id).update({
+        organization_id: invitation.organization_id,
+        role: invitation.role,
+        updated_at: getServerTimestamp()
+      });
+
+      // Add user to all communities in the organization
+      const communitiesSnapshot = await firestore
+        .collection('communities')
+        .where('organization_id', '==', invitation.organization_id)
+        .get();
+
+      console.log(`🔍 Adding user to ${communitiesSnapshot.docs.length} communities`);
+
+      for (const communityDoc of communitiesSnapshot.docs) {
+        const communityMemberData = {
+          user_id: existingUserQuery.docs[0].id,
+          community_id: communityDoc.id, // Use actual community ID
+          platform_user_id: `user_${existingUserQuery.docs[0].id}`, // Generate platform user ID
+          username: existingUser.email.split('@')[0], // Use email prefix as username
+          display_name: existingUser.name,
+          avatar_url: existingUser.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${existingUser.email}`,
+          roles: ['member'],
+          tags: [],
+          join_date: getServerTimestamp(),
+          last_activity: getServerTimestamp(),
+          message_count: 0,
+          engagement_score: 0,
+          sentiment_score: 0.5,
+          metadata: {
+            invitation_accepted: true,
+            joined_via: 'invitation'
+          },
+          is_active: true,
+          created_at: getServerTimestamp(),
+          updated_at: getServerTimestamp()
+        };
+
+        await firestore.collection('community_members').add(communityMemberData);
+        console.log(`✅ Added user to community: ${communityDoc.data().name}`);
+      }
+
+      // Update invitation status
+      await firestore.collection('invitations').doc(invitationDoc.id).update({
+        status: 'accepted',
+        accepted_at: getServerTimestamp(),
+        updated_at: getServerTimestamp()
+      });
+
+      res.status(200).json({
+        message: 'Invitation accepted successfully - user added to organization',
+        user: {
+          id: existingUserQuery.docs[0].id,
+          email: existingUser.email,
+          name: existingUser.name,
+          role: invitation.role,
+          organization_id: invitation.organization_id
+        }
+      });
+      return;
+    } else {
+      throw new ValidationError('User is already a member of this organization');
+    }
   }
+
+  // Hash password
+  const hashedPassword = await hashPassword(password);
 
   // Create user account
   const userData = {
     email: invitation.email,
     name,
+    password_hash: hashedPassword,
     role: invitation.role,
     organization_id: invitation.organization_id,
     email_verified: true, // Auto-verify since they accepted invitation
@@ -257,6 +438,42 @@ router.post('/accept', asyncHandler(async (req, res) => {
   };
 
   const userRef = await firestore.collection('users').add(userData);
+
+  // Add user to all communities in the organization
+  const communitiesSnapshot = await firestore
+    .collection('communities')
+    .where('organization_id', '==', invitation.organization_id)
+    .get();
+
+  console.log(`🔍 Adding new user to ${communitiesSnapshot.docs.length} communities`);
+
+  for (const communityDoc of communitiesSnapshot.docs) {
+    const communityMemberData = {
+      user_id: userRef.id,
+      community_id: communityDoc.id, // Use actual community ID
+      platform_user_id: `user_${userRef.id}`, // Generate platform user ID
+      username: userData.email.split('@')[0], // Use email prefix as username
+      display_name: userData.name,
+      avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.email}`,
+      roles: ['member'],
+      tags: [],
+      join_date: getServerTimestamp(),
+      last_activity: getServerTimestamp(),
+      message_count: 0,
+      engagement_score: 0,
+      sentiment_score: 0.5,
+      metadata: {
+        invitation_accepted: true,
+        joined_via: 'invitation'
+      },
+      is_active: true,
+      created_at: getServerTimestamp(),
+      updated_at: getServerTimestamp()
+    };
+
+    await firestore.collection('community_members').add(communityMemberData);
+    console.log(`✅ Added new user to community: ${communityDoc.data().name}`);
+  }
 
   // Update invitation status
   await firestore.collection('invitations').doc(invitationDoc.id).update({
@@ -277,9 +494,217 @@ router.post('/accept', asyncHandler(async (req, res) => {
   });
 }));
 
+// POST /api/v1/invitations/accept-google
+// Accept an invitation using Google OAuth (public endpoint)
+router.post('/accept-google', asyncHandler(async (req, res) => {
+  const validation = acceptInvitationGoogleSchema.safeParse(req.body);
+
+  if (!validation.success) {
+    throw new ValidationError('Validation failed', validation.error.errors);
+  }
+
+  const { token, googleCode } = validation.data;
+  const firestore = getFirestoreClient();
+
+  // Find invitation by token
+  const invitationQuery = await firestore
+    .collection('invitations')
+    .where('invitation_token', '==', token)
+    .where('status', '==', 'pending')
+    .limit(1)
+    .get();
+
+  if (invitationQuery.empty) {
+    throw new ValidationError('Invalid or expired invitation token');
+  }
+
+  const invitationDoc = invitationQuery.docs[0];
+  const invitation = invitationDoc.data();
+
+  // Check if invitation is expired
+  if (invitation.expires_at && new Date() > invitation.expires_at.toDate()) {
+    throw new ValidationError('Invitation has expired');
+  }
+
+  // Handle Google OAuth callback to get user info
+  const googleService = new GoogleOAuthService();
+  const oauthResult = await googleService.handleCallback(googleCode);
+
+  if (!oauthResult.success || !oauthResult.userData) {
+    throw new ValidationError('Google OAuth authentication failed');
+  }
+
+  // Verify that the Google email matches the invitation email
+  if (oauthResult.userData.email !== invitation.email) {
+    throw new ValidationError('Google account email does not match invitation email');
+  }
+
+  // Check if user already exists
+  const existingUserQuery = await firestore
+    .collection('users')
+    .where('email', '==', invitation.email)
+    .limit(1)
+    .get();
+
+  if (!existingUserQuery.empty) {
+    const existingUser = existingUserQuery.docs[0].data();
+
+    // If user exists but in a different organization, add them to this organization
+    if (existingUser.organization_id !== invitation.organization_id) {
+      // Update user's organization and add Google OAuth info if not present
+      const updateData: any = {
+        organization_id: invitation.organization_id,
+        role: invitation.role,
+        updated_at: getServerTimestamp()
+      };
+
+      // Add Google OAuth data if not already present
+      if (!existingUser.google_id) {
+        updateData.google_id = oauthResult.userData.id;
+        updateData.avatar_url = oauthResult.userData.picture;
+        updateData.auth_provider = 'google';
+      }
+
+      await firestore.collection('users').doc(existingUserQuery.docs[0].id).update(updateData);
+
+      // Add user to all communities in the organization
+      const communitiesSnapshot = await firestore
+        .collection('communities')
+        .where('organization_id', '==', invitation.organization_id)
+        .get();
+
+      console.log(`🔍 Adding Google user to ${communitiesSnapshot.docs.length} communities`);
+
+      for (const communityDoc of communitiesSnapshot.docs) {
+        const communityMemberData = {
+          user_id: existingUserQuery.docs[0].id,
+          community_id: communityDoc.id, // Use actual community ID
+          platform_user_id: `user_${existingUserQuery.docs[0].id}`, // Generate platform user ID
+          username: existingUser.email.split('@')[0], // Use email prefix as username
+          display_name: existingUser.name,
+          avatar_url: oauthResult.userData.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${existingUser.email}`,
+          roles: ['member'],
+          tags: [],
+          join_date: getServerTimestamp(),
+          last_activity: getServerTimestamp(),
+          message_count: 0,
+          engagement_score: 0,
+          sentiment_score: 0.5,
+          auth_provider: 'google',
+          metadata: {
+            invitation_accepted: true,
+            joined_via: 'invitation_google'
+          },
+          is_active: true,
+          created_at: getServerTimestamp(),
+          updated_at: getServerTimestamp()
+        };
+
+        await firestore.collection('community_members').add(communityMemberData);
+        console.log(`✅ Added Google user to community: ${communityDoc.data().name}`);
+      }
+
+      // Update invitation status
+      await firestore.collection('invitations').doc(invitationDoc.id).update({
+        status: 'accepted',
+        accepted_at: getServerTimestamp(),
+        updated_at: getServerTimestamp()
+      });
+
+      res.status(200).json({
+        message: 'Invitation accepted successfully via Google - user added to organization',
+        user: {
+          id: existingUserQuery.docs[0].id,
+          email: existingUser.email,
+          name: existingUser.name,
+          role: invitation.role,
+          organization_id: invitation.organization_id,
+          auth_provider: 'google'
+        }
+      });
+      return;
+    } else {
+      throw new ValidationError('User is already a member of this organization');
+    }
+  }
+
+  // Create user account with Google OAuth data
+  const userData = {
+    email: invitation.email,
+    name: oauthResult.userData.name,
+    google_id: oauthResult.userData.id,
+    avatar_url: oauthResult.userData.picture,
+    role: invitation.role,
+    organization_id: invitation.organization_id,
+    email_verified: true, // Auto-verify since they used Google OAuth
+    is_active: true,
+    auth_provider: 'google',
+    created_at: getServerTimestamp(),
+    updated_at: getServerTimestamp()
+  };
+
+  const userRef = await firestore.collection('users').add(userData);
+
+  // Add user to all communities in the organization
+  const communitiesSnapshot = await firestore
+    .collection('communities')
+    .where('organization_id', '==', invitation.organization_id)
+    .get();
+
+  console.log(`🔍 Adding new Google user to ${communitiesSnapshot.docs.length} communities`);
+
+  for (const communityDoc of communitiesSnapshot.docs) {
+    const communityMemberData = {
+      user_id: userRef.id,
+      community_id: communityDoc.id, // Use actual community ID
+      platform_user_id: `user_${userRef.id}`, // Generate platform user ID
+      username: userData.email.split('@')[0], // Use email prefix as username
+      display_name: userData.name,
+      avatar_url: userData.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.email}`,
+      roles: ['member'],
+      tags: [],
+      join_date: getServerTimestamp(),
+      last_activity: getServerTimestamp(),
+      message_count: 0,
+      engagement_score: 0,
+      sentiment_score: 0.5,
+      auth_provider: 'google',
+      metadata: {
+        invitation_accepted: true,
+        joined_via: 'invitation_google'
+      },
+      is_active: true,
+      created_at: getServerTimestamp(),
+      updated_at: getServerTimestamp()
+    };
+
+    await firestore.collection('community_members').add(communityMemberData);
+    console.log(`✅ Added new Google user to community: ${communityDoc.data().name}`);
+  }
+
+  // Update invitation status
+  await firestore.collection('invitations').doc(invitationDoc.id).update({
+    status: 'accepted',
+    accepted_at: getServerTimestamp(),
+    updated_at: getServerTimestamp()
+  });
+
+  res.status(201).json({
+    message: 'Invitation accepted successfully via Google',
+    user: {
+      id: userRef.id,
+      email: userData.email,
+      name: userData.name,
+      role: userData.role,
+      organization_id: userData.organization_id,
+      auth_provider: 'google'
+    }
+  });
+}));
+
 // DELETE /api/v1/invitations/:invitationId
 // Cancel/revoke an invitation
-router.delete('/:invitationId', asyncHandler(async (req: AuthenticatedRequest, res) => {
+router.delete('/:invitationId', authMiddleware, asyncHandler(async (req: AuthenticatedRequest, res) => {
   const { invitationId } = req.params;
   const user = req.user!;
 
