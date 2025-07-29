@@ -37,10 +37,6 @@ class ApiClient {
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
 
-    // Debug logging
-    console.log('🌐 API Request:', options.method || 'GET', url);
-    console.log('🔑 Auth headers:', headers.Authorization ? 'Present' : 'Missing');
-
     // Get auth token if available
     const token = AuthService.getTokenFromStorage();
     const headers = {
@@ -52,6 +48,10 @@ class ApiClient {
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
+
+    // Debug logging
+    console.log('🌐 API Request:', options.method || 'GET', url);
+    console.log('🔑 Auth headers:', headers.Authorization ? 'Present' : 'Missing');
 
     try {
       const response = await fetch(url, {
