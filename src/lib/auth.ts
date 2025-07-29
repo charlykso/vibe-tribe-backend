@@ -37,9 +37,14 @@ export interface ResetPasswordData {
 
 
 export class AuthService {
-  private static readonly API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
+  private static readonly API_URL = import.meta.env.VITE_API_URL || 'https://vibe-tribe-backend-8yvp.onrender.com/api/v1';
 
   static async login(credentials: LoginCredentials): Promise<{ user: User; token: string }> {
+    console.log('🔐 AuthService Configuration:');
+    console.log('  VITE_API_URL:', import.meta.env.VITE_API_URL);
+    console.log('  API_URL:', this.API_URL);
+    console.log('  Login URL:', `${this.API_URL}/auth/login`);
+
     const response = await fetch(`${this.API_URL}/auth/login`, {
       method: 'POST',
       headers: {
