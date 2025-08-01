@@ -129,6 +129,31 @@ router.post('/register', asyncHandler(async (req, res) => {
 
     const orgRef = await firestore.collection('organizations').add(organizationData);
     organizationId = orgRef.id;
+
+    // Create a default community for the new organization
+    const defaultCommunityData = {
+      name: `${organizationName} Community`,
+      platform: 'general',
+      platform_community_id: `general_${organizationId}`,
+      description: `Main community for ${organizationName}`,
+      organization_id: organizationId,
+      health_score: 0,
+      member_count: 0,
+      active_member_count: 0,
+      message_count: 0,
+      engagement_rate: 0.00,
+      sentiment_score: 0.00,
+      settings: {
+        auto_moderation: true,
+        welcome_message: `Welcome to ${organizationName}!`
+      },
+      created_at: getServerTimestamp(),
+      updated_at: getServerTimestamp(),
+      is_active: true
+    };
+
+    const defaultCommunityRef = await firestore.collection('communities').add(defaultCommunityData);
+    console.log(`✅ Created default community for organization: ${defaultCommunityRef.id}`);
   }
 
   // Generate email verification token

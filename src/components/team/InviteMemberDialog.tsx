@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -19,28 +19,50 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Mail, UserPlus, AlertCircle } from 'lucide-react';
+import { Loader2, Mail, UserPlus, AlertCircle, Users } from 'lucide-react';
 import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
 import { InvitationsService, CreateInvitationRequest } from '@/lib/services/invitations';
+import { CommunitiesService } from '@/lib/services/communities';
 
 interface InviteMemberDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onInvitationSent?: () => void;
+  defaultCommunityId?: string; // Pre-select a specific community
 }
 
 export const InviteMemberDialog: React.FC<InviteMemberDialogProps> = ({
   open,
   onOpenChange,
   onInvitationSent,
+  defaultCommunityId,
 }) => {
   const [formData, setFormData] = useState<CreateInvitationRequest>({
     email: '',
     role: 'member',
     message: '',
+    community_id: defaultCommunityId || '',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch communities for selection
+  const { data: communitiesData, isLoading: communitiesLoading } = useQuery({
+    queryKey: ['communities'],
+    queryFn: () => CommunitiesService.getCommunities(),
+    select: (response) => {
+      const apiData = (response.data as any).data;
+      return apiData?.communities || [];
+    }
+  });
+
+  // Update community_id when defaultCommunityId changes
+  useEffect(() => {
+    if (defaultCommunityId && formData.community_id !== defaultCommunityId) {
+      setFormData(prev => ({ ...prev, community_id: defaultCommunityId }));
+    }
+  }, [defaultCommunityId, formData.community_id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,15 +71,32 @@ export const InviteMemberDialog: React.FC<InviteMemberDialogProps> = ({
 
     try {
       // Validate email
-      if (!formData.email || !formData.email.includes('@')) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!formData.email) {
+        throw new Error('Email address is required');
+      }
+      if (!emailRegex.test(formData.email)) {
         throw new Error('Please enter a valid email address');
+      }
+
+      // Validate community selection
+      if (!formData.community_id) {
+        throw new Error('Please select a community to invite the user to');
+      }
+
+      // Validate role
+      if (!formData.role) {
+        throw new Error('Please select a role for the user');
       }
 
       const response = await InvitationsService.sendInvitation(formData);
 
       if (response.data) {
+        const selectedCommunity = communitiesData?.find((c: any) => c.id === formData.community_id);
+        const communityName = selectedCommunity?.name || 'the selected community';
+
         toast.success('Invitation sent successfully!', {
-          description: `An invitation has been sent to ${formData.email}`,
+          description: `${formData.email} has been invited to join ${communityName}`,
         });
 
         // Reset form
@@ -65,6 +104,7 @@ export const InviteMemberDialog: React.FC<InviteMemberDialogProps> = ({
           email: '',
           role: 'member',
           message: '',
+          community_id: defaultCommunityId || '',
         });
 
         // Close dialog and notify parent
@@ -72,6 +112,10 @@ export const InviteMemberDialog: React.FC<InviteMemberDialogProps> = ({
         onInvitationSent?.();
       }
     } catch (err: any) {
+      console.error('🚨 Invitation error details:', err);
+      console.error('🚨 Error message:', err.message);
+      console.error('🚨 Error response:', err.response);
+
       const errorMessage = err.message || 'Failed to send invitation';
       setError(errorMessage);
       toast.error('Failed to send invitation', {
@@ -168,6 +212,37 @@ export const InviteMemberDialog: React.FC<InviteMemberDialogProps> = ({
             </Select>
             <p className="text-xs text-gray-500">
               {roleDescriptions[formData.role as keyof typeof roleDescriptions]}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="community">Community *</Label>
+            <div className="relative">
+              <Users className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Select
+                value={formData.community_id}
+                onValueChange={(value) => handleInputChange('community_id', value)}
+                disabled={isLoading || communitiesLoading}
+              >
+                <SelectTrigger className="pl-10">
+                  <SelectValue placeholder="Select community to invite to" />
+                </SelectTrigger>
+                <SelectContent>
+                  {communitiesData?.map((community: any) => (
+                    <SelectItem key={community.id} value={community.id}>
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">{community.name}</span>
+                        <span className="text-xs text-gray-500">
+                          {community.platform} • {community.member_count || 0} members
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs text-gray-500">
+              The user will be invited to join this specific community
             </p>
           </div>
 

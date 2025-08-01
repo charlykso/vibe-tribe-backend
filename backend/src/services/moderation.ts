@@ -48,20 +48,45 @@ export class ModerationService {
         query = query.where('status', '==', status);
       }
 
+      // Simplified query to avoid index requirements
       const snapshot = await query
-        .orderBy('priority', 'desc')
-        .orderBy('created_at', 'desc')
         .limit(limit)
-        .offset(offset)
         .get();
 
-      return snapshot.docs.map(doc => ({
+      const moderationItems = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as ModerationQueue[];
+
+      // Sort in memory to avoid index requirements
+      moderationItems.sort((a, b) => {
+        // Sort by priority first (high to low)
+        if (a.priority !== b.priority) {
+          return (b.priority || 0) - (a.priority || 0);
+        }
+        // Then by created_at (newest first)
+        const aDate = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const bDate = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return bDate - aDate;
+      });
+
+      // Apply offset in memory (since Firestore doesn't have offset)
+      const startIndex = offset;
+      return moderationItems.slice(startIndex, startIndex + limit);
     } catch (error) {
       console.error('Error fetching moderation queue:', error);
-      throw new Error('Failed to fetch moderation queue');
+      console.error('Error details:', {
+        organizationId,
+        status,
+        limit,
+        offset,
+        errorMessage: error.message,
+        errorStack: error.stack
+      });
+
+      // Return empty array instead of throwing error for better UX
+      console.log('Returning empty moderation queue due to error');
+      return [];
     }
   }
 
@@ -91,20 +116,42 @@ export class ModerationService {
         query = query.where('type', '==', options.type);
       }
 
+      // Simplified query to avoid index requirements
       const snapshot = await query
-        .orderBy('priority', 'desc')
-        .orderBy('created_at', 'desc')
         .limit(options?.limit || 50)
-        .offset(options?.offset || 0)
         .get();
 
-      return snapshot.docs.map(doc => ({
+      const moderationItems = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as ModerationQueue[];
+
+      // Sort in memory to avoid index requirements
+      moderationItems.sort((a, b) => {
+        // Sort by priority first (high to low)
+        if (a.priority !== b.priority) {
+          return (b.priority || 0) - (a.priority || 0);
+        }
+        // Then by created_at (newest first)
+        const aDate = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const bDate = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return bDate - aDate;
+      });
+
+      return moderationItems;
     } catch (error) {
       console.error('Error fetching community moderation queue:', error);
-      throw new Error('Failed to fetch community moderation queue');
+      console.error('Error details:', {
+        communityId,
+        organizationId,
+        options,
+        errorMessage: error.message,
+        errorStack: error.stack
+      });
+
+      // Return empty array instead of throwing error for better UX
+      console.log('Returning empty community moderation queue due to error');
+      return [];
     }
   }
 

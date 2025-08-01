@@ -12,6 +12,8 @@ export interface Invitation {
   expires_at: string;
   status: 'pending' | 'accepted' | 'cancelled' | 'expired';
   message?: string;
+  community_id?: string; // Specific community invitation
+  community_name?: string; // Community name for display
   created_at: string;
   updated_at: string;
   accepted_at?: string;
@@ -25,6 +27,7 @@ export interface CreateInvitationRequest {
   email: string;
   role: 'admin' | 'moderator' | 'member';
   message?: string;
+  community_id?: string; // Specific community to invite to
 }
 
 export interface InvitationResponse {

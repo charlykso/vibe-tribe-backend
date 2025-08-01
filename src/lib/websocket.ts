@@ -37,8 +37,22 @@ class RealWebSocketService {
           token: token
         },
         transports: ['websocket', 'polling'],
-        timeout: 20000,
-        forceNew: true
+        timeout: 5000, // Reduced timeout for faster fallback
+        forceNew: true,
+        autoConnect: true
+      });
+
+      // Set a timeout for initial connection
+      const connectionTimeout = setTimeout(() => {
+        if (!this.connected) {
+          console.log('⏰ WebSocket connection timeout, falling back to mock mode');
+          this.fallbackToMockMode();
+        }
+      }, 3000); // 3 second timeout
+
+      // Clear timeout on successful connection
+      this.socket.on('connect', () => {
+        clearTimeout(connectionTimeout);
       });
 
       this.setupEventListeners();
@@ -72,6 +86,16 @@ class RealWebSocketService {
 
     this.socket.on('connect_error', (error) => {
       console.error('❌ WebSocket connection error:', error);
+
+      // If it's a connection refused error, immediately fall back to mock mode
+      if (error.message?.includes('ECONNREFUSED') ||
+          error.message?.includes('websocket error') ||
+          error.type === 'TransportError') {
+        console.log('🔄 WebSocket server unavailable, using mock mode');
+        this.fallbackToMockMode();
+        return;
+      }
+
       this.handleReconnection();
     });
 

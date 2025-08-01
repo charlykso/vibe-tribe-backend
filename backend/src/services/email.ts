@@ -209,13 +209,14 @@ export class EmailService {
     email: string,
     inviterName: string,
     organizationName: string,
-    invitationToken: string
+    invitationToken: string,
+    communityName?: string
   ): Promise<{ success: boolean; error?: string }> {
     // Use FRONTEND_URL from environment variables
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8081';
     const invitationUrl = `${frontendUrl}/accept-invitation?token=${invitationToken}`;
 
-    const template = this.getInvitationEmailTemplate(inviterName, organizationName, invitationUrl);
+    const template = this.getInvitationEmailTemplate(inviterName, organizationName, invitationUrl, communityName);
 
     const result = await this.sendEmail({
       to: email,
@@ -279,9 +280,13 @@ export class EmailService {
     };
   }
 
-  private getInvitationEmailTemplate(inviterName: string, organizationName: string, invitationUrl: string): EmailTemplate {
+  private getInvitationEmailTemplate(inviterName: string, organizationName: string, invitationUrl: string, communityName?: string): EmailTemplate {
+    const subject = communityName
+      ? `You're invited to join ${communityName} community in ${organizationName} on Tribe`
+      : `You're invited to join ${organizationName} on Tribe`;
+
     return {
-      subject: `You're invited to join ${organizationName} on Tribe`,
+      subject,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
           <!-- Header with Tribe Logo -->
@@ -293,8 +298,18 @@ export class EmailService {
           <!-- Content -->
           <div style="padding: 30px 20px;">
             <p style="font-size: 16px; line-height: 1.6; color: #333; margin-bottom: 20px;">
-              ${inviterName} has invited you to join <strong>${organizationName}</strong> on Tribe.
+              ${inviterName} has invited you to join <strong>${organizationName}</strong> on Tribe${communityName ? ` and become a member of the <strong>${communityName}</strong> community` : ''}.
             </p>
+            ${communityName ? `
+            <div style="background-color: #f8f9fa; border-left: 4px solid #BA1863; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+              <p style="font-size: 14px; line-height: 1.6; color: #333; margin: 0;">
+                <strong>🏘️ Community:</strong> ${communityName}
+              </p>
+              <p style="font-size: 12px; line-height: 1.4; color: #666; margin: 5px 0 0;">
+                You'll be added to this specific community where you can collaborate and engage with other members.
+              </p>
+            </div>
+            ` : ''}
             <p style="font-size: 14px; line-height: 1.6; color: #666; margin-bottom: 30px;">
               Tribe helps teams manage their social media presence across multiple platforms with AI-powered content generation and analytics.
             </p>

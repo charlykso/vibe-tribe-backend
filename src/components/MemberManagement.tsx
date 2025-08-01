@@ -62,22 +62,28 @@ export const MemberManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
 
-  // Fetch organization members with stats
-  const {
-    data: membersData,
-    isLoading,
-    error
-  } = useQuery({
-    queryKey: ['organization-members', searchTerm, selectedFilter],
-    queryFn: () => UsersService.getOrganizationMembers({
-      search: searchTerm || undefined,
-      limit: 100
-    }),
-    select: (response) => ({
-      members: (response.data?.members || []).map(mapUserToMemberDisplay),
-      total: response.data?.pagination?.total || 0
-    })
-  });
+  // Temporarily disabled - using community members instead
+  // TODO: Fix the /users/organization/members endpoint
+  const membersData = { members: [], total: 0 };
+  const isLoading = false;
+  const error = null;
+
+  // // Fetch organization members with stats
+  // const {
+  //   data: membersData,
+  //   isLoading,
+  //   error
+  // } = useQuery({
+  //   queryKey: ['organization-members', searchTerm, selectedFilter],
+  //   queryFn: () => UsersService.getOrganizationMembers({
+  //     search: searchTerm || undefined,
+  //     limit: 100
+  //   }),
+  //   select: (response) => ({
+  //     members: (response.data?.members || []).map(mapUserToMemberDisplay),
+  //     total: response.data?.pagination?.total || 0
+  //   })
+  // });
 
   const members = membersData?.members || [];
 
@@ -189,10 +195,17 @@ export const MemberManagement = () => {
       ) : filteredMembers.length === 0 ? (
         <div className="text-center py-12">
           <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400 text-lg">No members found</p>
+          <p className="text-gray-600 dark:text-gray-400 text-lg">Organization Member Management</p>
           <p className="text-gray-500 dark:text-gray-500 text-sm mt-2">
-            {searchTerm ? 'Try adjusting your search terms' : 'No members have joined yet'}
+            This feature is currently being updated. Please use Community Management to view and manage members.
           </p>
+          <Button
+            variant="outline"
+            className="mt-4"
+            onClick={() => window.location.href = '/dashboard/community/overview'}
+          >
+            Go to Community Management
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

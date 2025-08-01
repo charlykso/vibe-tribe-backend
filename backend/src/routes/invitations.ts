@@ -14,7 +14,8 @@ const router = Router();
 const inviteUserSchema = z.object({
   email: z.string().email('Invalid email format'),
   role: z.enum(['admin', 'moderator', 'member']).default('member'),
-  message: z.string().optional()
+  message: z.string().optional(),
+  community_id: z.string().optional() // Specific community to invite to
 });
 
 const acceptInvitationSchema = z.object({
@@ -47,10 +48,33 @@ router.post('/invite', authMiddleware, asyncHandler(async (req: AuthenticatedReq
   const validation = inviteUserSchema.safeParse(req.body);
 
   if (!validation.success) {
-    throw new ValidationError('Validation failed', validation.error.errors);
+    const errorMessages = validation.error.errors.map(err => {
+      if (err.path.includes('email')) {
+        return 'Please enter a valid email address';
+      }
+      if (err.path.includes('role')) {
+        return 'Please select a valid role (admin, moderator, or member)';
+      }
+      if (err.path.includes('community_id')) {
+        return 'Please select a community';
+      }
+      return err.message;
+    });
+    throw new ValidationError(errorMessages[0] || 'Invalid input data');
   }
 
-  const { email, role, message } = validation.data;
+  const { email, role, message, community_id } = validation.data;
+
+  // Additional email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    throw new ValidationError('Please enter a valid email address');
+  }
+
+  // Prevent self-invitation
+  if (email.toLowerCase() === user.email.toLowerCase()) {
+    throw new ValidationError('You cannot invite yourself to the organization');
+  }
   const user = req.user;
 
   if (!user) {
@@ -92,7 +116,8 @@ router.post('/invite', authMiddleware, asyncHandler(async (req: AuthenticatedReq
     .get();
 
   if (!existingUserQuery.empty) {
-    throw new ValidationError('User is already a member of this organization');
+    console.log(`❌ User ${email} is already a member of organization ${user.organization_id}`);
+    throw new ValidationError(`${email} is already a member of this organization`);
   }
 
   // Check if there's already a pending invitation
@@ -105,7 +130,29 @@ router.post('/invite', authMiddleware, asyncHandler(async (req: AuthenticatedReq
     .get();
 
   if (!existingInvitationQuery.empty) {
-    throw new ValidationError('An invitation has already been sent to this email');
+    const existingInvitation = existingInvitationQuery.docs[0].data();
+    const communityInfo = existingInvitation.community_name ? ` for ${existingInvitation.community_name} community` : '';
+    console.log(`❌ Invitation already exists for ${email}${communityInfo}`);
+    throw new ValidationError(`An invitation has already been sent to ${email}${communityInfo}. Please wait for them to respond or cancel the existing invitation.`);
+  }
+
+  // Validate community if specified
+  let communityData = null;
+  if (community_id) {
+    const communityDoc = await firestore.collection('communities').doc(community_id).get();
+    if (!communityDoc.exists) {
+      console.log(`❌ Community ${community_id} does not exist`);
+      throw new ValidationError('The selected community no longer exists. Please refresh the page and try again.');
+    }
+    communityData = communityDoc.data();
+
+    // Verify community belongs to user's organization
+    if (communityData.organization_id !== user.organization_id) {
+      console.log(`❌ Community ${community_id} belongs to different organization`);
+      throw new ValidationError('You do not have permission to invite users to this community.');
+    }
+
+    console.log(`✅ Validated community: ${communityData.name} (${community_id})`);
   }
 
   // Generate invitation token
@@ -113,7 +160,7 @@ router.post('/invite', authMiddleware, asyncHandler(async (req: AuthenticatedReq
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
   // Create invitation record
-  const invitationData = {
+  const invitationData: any = {
     email,
     role,
     organization_id: user.organization_id,
@@ -126,7 +173,21 @@ router.post('/invite', authMiddleware, asyncHandler(async (req: AuthenticatedReq
     updated_at: getServerTimestamp()
   };
 
-  const invitationRef = await firestore.collection('invitations').add(invitationData);
+  // Add community information if specified
+  if (community_id && communityData) {
+    invitationData.community_id = community_id;
+    invitationData.community_name = communityData.name;
+  }
+
+  // Create invitation record
+  let invitationRef;
+  try {
+    invitationRef = await firestore.collection('invitations').add(invitationData);
+    console.log(`✅ Invitation created with ID: ${invitationRef.id}`);
+  } catch (error) {
+    console.error('❌ Failed to create invitation in database:', error);
+    throw new ValidationError('Failed to create invitation. Please try again.');
+  }
 
   // Send invitation email
   try {
@@ -135,17 +196,31 @@ router.post('/invite', authMiddleware, asyncHandler(async (req: AuthenticatedReq
       email,
       user.name,
       organization.name,
-      invitationToken
+      invitationToken,
+      communityData?.name // Pass community name if specified
     );
 
     if (emailResult.success) {
       console.log(`✅ Invitation email sent successfully to ${email}`);
     } else {
       console.error(`❌ Failed to send invitation email to ${email}:`, emailResult.error);
+      // Update invitation status to indicate email failure
+      await invitationRef.update({
+        status: 'email_failed',
+        email_error: emailResult.error,
+        updated_at: getServerTimestamp()
+      });
+      throw new ValidationError(`Invitation created but email delivery failed: ${emailResult.error}. Please try resending the invitation.`);
     }
   } catch (error) {
     console.error('❌ Exception while sending invitation email:', error);
-    // Don't fail the invitation if email fails, but log it
+    // Update invitation status to indicate email failure
+    await invitationRef.update({
+      status: 'email_failed',
+      email_error: error.message,
+      updated_at: getServerTimestamp()
+    });
+    throw new ValidationError(`Invitation created but email delivery failed: ${error.message}. Please try resending the invitation.`);
   }
 
   res.status(201).json({
@@ -266,15 +341,48 @@ router.post('/accept-existing', authMiddleware, asyncHandler(async (req, res) =>
     updated_at: getServerTimestamp()
   });
 
-  // Add user to all communities in the organization
-  const communitiesSnapshot = await firestore
-    .collection('communities')
-    .where('organization_id', '==', invitation.organization_id)
-    .get();
+  // Add user to specific community or all communities in the organization
+  let communitiesToJoin = [];
 
-  console.log(`🔍 Adding user to ${communitiesSnapshot.docs.length} communities`);
+  if (invitation.community_id) {
+    // Add to specific community only
+    const specificCommunityDoc = await firestore.collection('communities').doc(invitation.community_id).get();
+    if (specificCommunityDoc.exists) {
+      communitiesToJoin = [specificCommunityDoc];
+      console.log(`🔍 Adding user to specific community: ${specificCommunityDoc.data()?.name}`);
+    } else {
+      console.warn(`⚠️ Specified community ${invitation.community_id} not found, adding to all communities`);
+      // Fallback to all communities if specified community doesn't exist
+      const communitiesSnapshot = await firestore
+        .collection('communities')
+        .where('organization_id', '==', invitation.organization_id)
+        .get();
+      communitiesToJoin = communitiesSnapshot.docs;
+    }
+  } else {
+    // Add to default community (general platform) or all communities if no default exists
+    const defaultCommunitySnapshot = await firestore
+      .collection('communities')
+      .where('organization_id', '==', invitation.organization_id)
+      .where('platform', '==', 'general')
+      .limit(1)
+      .get();
 
-  for (const communityDoc of communitiesSnapshot.docs) {
+    if (!defaultCommunitySnapshot.empty) {
+      communitiesToJoin = defaultCommunitySnapshot.docs;
+      console.log(`🔍 Adding user to default community: ${defaultCommunitySnapshot.docs[0].data()?.name}`);
+    } else {
+      // Fallback to all communities if no default community exists (legacy behavior)
+      const communitiesSnapshot = await firestore
+        .collection('communities')
+        .where('organization_id', '==', invitation.organization_id)
+        .get();
+      communitiesToJoin = communitiesSnapshot.docs;
+      console.log(`🔍 No default community found, adding user to all ${communitiesToJoin.length} communities in organization`);
+    }
+  }
+
+  for (const communityDoc of communitiesToJoin) {
     // Check if user is already a member
     const existingMemberQuery = await firestore
       .collection('community_members')

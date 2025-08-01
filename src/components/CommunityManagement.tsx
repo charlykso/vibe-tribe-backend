@@ -25,6 +25,7 @@ import {
 import { toast } from 'sonner';
 import { InviteMemberDialog } from '@/components/team/InviteMemberDialog';
 import { CommunitiesService, CommunityMember, ModerationItem } from '@/lib/services/communities';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 // For backward compatibility with existing UI, we'll map CommunityMember to Member
 interface Member {
@@ -170,7 +171,9 @@ export const CommunityManagement = () => {
   });
 
   const members = membersData?.members || [];
-  const moderationQueue = moderationData?.items || [];
+  const moderationQueue = (moderationData?.items || []).filter(item =>
+    item && typeof item === 'object' && item.id
+  );
 
   // Mutations for member actions
   const updateMemberMutation = useMutation({
@@ -614,19 +617,34 @@ export const CommunityManagement = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {moderationError ? (
-                <div className="text-center py-8">
-                  <p className="text-red-600 dark:text-red-400 mb-4">
-                    Failed to load moderation queue: {moderationError.message}
-                  </p>
-                  <Button
-                    variant="outline"
-                    onClick={() => queryClient.invalidateQueries({ queryKey: ['moderation-queue', selectedCommunityId] })}
-                  >
-                    Retry
-                  </Button>
-                </div>
-              ) : moderationLoading ? (
+              <ErrorBoundary
+                fallback={
+                  <div className="text-center py-8">
+                    <p className="text-red-600 dark:text-red-400 mb-4">
+                      Error loading moderation queue
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={() => window.location.reload()}
+                    >
+                      Refresh Page
+                    </Button>
+                  </div>
+                }
+              >
+                {moderationError ? (
+                  <div className="text-center py-8">
+                    <p className="text-red-600 dark:text-red-400 mb-4">
+                      Failed to load moderation queue: {moderationError.message}
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={() => queryClient.invalidateQueries({ queryKey: ['moderation-queue', selectedCommunityId] })}
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                ) : moderationLoading ? (
                 <div className="space-y-4">
                   {[...Array(2)].map((_, i) => (
                     <div key={`moderation-skeleton-${i}`} className="p-4 border rounded-lg animate-pulse">
@@ -654,31 +672,31 @@ export const CommunityManagement = () => {
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center space-x-3">
                         <Avatar className="w-8 h-8">
-                          <AvatarImage src={item.author.avatar} />
-                          <AvatarFallback>{item.author.name[0]}</AvatarFallback>
+                          <AvatarImage src={item.author?.avatar || ''} />
+                          <AvatarFallback>{item.author?.name?.[0] || '?'}</AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-medium text-sm">{item.author.name}</p>
-                          <p className="text-xs text-gray-500">{item.author.username}</p>
+                          <p className="font-medium text-sm">{item.author?.name || 'Unknown User'}</p>
+                          <p className="text-xs text-gray-500">{item.author?.username || 'unknown'}</p>
                         </div>
                         <Badge variant="outline" className="text-xs">
-                          {item.type}
+                          {item.type || 'Unknown'}
                         </Badge>
                         <Badge variant="outline" className="text-xs">
-                          {item.platform}
+                          {item.platform || 'Unknown'}
                         </Badge>
                       </div>
 
                       <div className="flex items-center space-x-2">
-                        {getPriorityIcon(item.priority)}
+                        {getPriorityIcon(item.priority || 1)}
                         <span className="text-xs text-gray-500">
-                          {formatTimeAgo(item.timestamp)}
+                          {formatTimeAgo(item.timestamp || item.created_at)}
                         </span>
                       </div>
                     </div>
 
                     <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg mb-3">
-                      <p className="text-sm">{item.content}</p>
+                      <p className="text-sm">{item.content || 'No content available'}</p>
                     </div>
 
                     {item.reportReason && (
@@ -725,6 +743,7 @@ export const CommunityManagement = () => {
                   ))}
                 </div>
               )}
+              </ErrorBoundary>
             </CardContent>
           </Card>
         </TabsContent>
@@ -734,6 +753,7 @@ export const CommunityManagement = () => {
       <InviteMemberDialog
         open={inviteDialogOpen}
         onOpenChange={setInviteDialogOpen}
+        defaultCommunityId={selectedCommunityId}
         onInvitationSent={() => {
           // Refresh member list to show pending invitations
           queryClient.invalidateQueries({ queryKey: ['community-members', selectedCommunityId] });

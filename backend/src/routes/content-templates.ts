@@ -38,16 +38,22 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
       query = query.where('platforms', 'array-contains', platform);
     }
 
+    // Simplified query to avoid index requirements
     const snapshot = await query
-      .orderBy('created_at', 'desc')
       .limit(parseInt(limit as string))
-      .offset(parseInt(offset as string))
       .get();
 
     let templates = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     })) as any[];
+
+    // Sort by created_at descending (newest first)
+    templates.sort((a, b) => {
+      const aDate = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const bDate = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return bDate - aDate;
+    });
 
     // Filter by search term if provided
     if (search) {
@@ -59,6 +65,11 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
         template.tags?.some((tag: string) => tag.toLowerCase().includes(searchTerm))
       );
     }
+
+    // Apply offset in memory
+    const offsetNum = parseInt(offset as string);
+    const limitNum = parseInt(limit as string);
+    templates = templates.slice(offsetNum, offsetNum + limitNum);
 
     res.json({
       success: true,
