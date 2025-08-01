@@ -65,6 +65,49 @@ export class ModerationService {
     }
   }
 
+  async getModerationQueueByCommunity(
+    communityId: string,
+    organizationId: string,
+    options?: {
+      status?: string;
+      priority?: string;
+      type?: string;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<ModerationQueue[]> {
+    try {
+      const db = getFirestoreClient();
+      let query = db
+        .collection('moderation_queue')
+        .where('organization_id', '==', organizationId)
+        .where('community_id', '==', communityId);
+
+      if (options?.status) {
+        query = query.where('status', '==', options.status);
+      }
+
+      if (options?.type) {
+        query = query.where('type', '==', options.type);
+      }
+
+      const snapshot = await query
+        .orderBy('priority', 'desc')
+        .orderBy('created_at', 'desc')
+        .limit(options?.limit || 50)
+        .offset(options?.offset || 0)
+        .get();
+
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as ModerationQueue[];
+    } catch (error) {
+      console.error('Error fetching community moderation queue:', error);
+      throw new Error('Failed to fetch community moderation queue');
+    }
+  }
+
   async moderateContent(
     queueItemId: string,
     action: 'approve' | 'reject' | 'escalate',

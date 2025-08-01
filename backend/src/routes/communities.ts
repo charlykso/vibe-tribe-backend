@@ -403,4 +403,49 @@ router.post('/:id/refresh-stats', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/v1/communities/:id/moderation - Get moderation queue for a specific community
+router.get('/:id/moderation', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { limit = 50, offset = 0, status, priority, type } = req.query;
+
+    // Get the user's organization ID from the authenticated request
+    const user = (req as any).user;
+    if (!user) {
+      res.status(401).json({
+        success: false,
+        error: 'Unauthorized'
+      });
+      return;
+    }
+
+    // Get moderation queue items for this community
+    const queueItems = await moderationService.getModerationQueueByCommunity(
+      id,
+      user.organization_id,
+      {
+        status: status as string,
+        priority: priority as string,
+        type: type as string,
+        limit: parseInt(limit as string),
+        offset: parseInt(offset as string)
+      }
+    );
+
+    res.json({
+      success: true,
+      data: {
+        items: queueItems,
+        total: queueItems.length
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching community moderation queue:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch moderation queue'
+    });
+  }
+});
+
 export default router;
