@@ -1329,6 +1329,12 @@ router.get('/debug/test-oauth-initiate/:platform', async (req, res) => {
   }
 });
 
+// Debug endpoint to check Twitter configuration
+router.get('/debug/twitter-config', async (req, res) => {
+  try {
+    const twitterService = OAuthServiceFactory.getService('twitter');
+    const config = (twitterService as any).config;
+
     console.log('🐦 Debug: Twitter configuration check...');
 
     res.json({
@@ -1352,7 +1358,8 @@ router.get('/debug/test-oauth-initiate/:platform', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ Debug: Twitter config check failed:', error);    res.status(500).json({
+    console.error('❌ Debug: Twitter config check failed:', error);
+    res.status(500).json({
       error: 'Twitter config check failed',
       message: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
