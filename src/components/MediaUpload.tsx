@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Upload, X, Edit, Eye, Download, Trash2, Image as ImageIcon, Video, File } from 'lucide-react';
 import { toast } from 'sonner';
+import { MediaService } from '@/lib/services/media';
 
 interface MediaFile {
   id: string;
@@ -22,8 +23,40 @@ interface MediaFile {
 export const MediaUpload = () => {
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
   const [dragActive, setDragActive] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selectedFile, setSelectedFile] = useState<MediaFile | null>(null);
   const [showCropModal, setShowCropModal] = useState(false);
+
+  // Load existing media files
+  useEffect(() => {
+    const loadMediaFiles = async () => {
+      try {
+        setLoading(true);
+        const files = await MediaService.getMediaFilesWithFallback();
+
+        // Convert API media files to component format
+        const convertedFiles: MediaFile[] = files.map(file => ({
+          id: file.id,
+          name: file.original_name || file.filename,
+          type: file.mime_type.startsWith('image/') ? 'image' :
+                file.mime_type.startsWith('video/') ? 'video' : 'document',
+          size: file.size,
+          url: file.url,
+          thumbnail: file.thumbnail_url,
+          altText: file.alt_text
+        }));
+
+        setMediaFiles(convertedFiles);
+      } catch (error) {
+        console.error('Failed to load media files:', error);
+        toast.error('Failed to load media files');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadMediaFiles();
+  }, []);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -81,34 +114,59 @@ export const MediaUpload = () => {
 
       setMediaFiles(prev => [...prev, newFile]);
 
-      // Simulate upload progress
-      simulateUpload(fileId);
+      // Upload file using MediaService
+      uploadFile(file, fileId);
     });
   };
 
-  const simulateUpload = (fileId: string) => {
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.random() * 30;
-      if (progress >= 100) {
-        progress = 100;
-        clearInterval(interval);
+  const uploadFile = async (file: File, fileId: string) => {
+    try {
+      const response = await MediaService.uploadFile(file, {
+        onProgress: (progress) => {
+          setMediaFiles(prev =>
+            prev.map(mediaFile =>
+              mediaFile.id === fileId
+                ? { ...mediaFile, uploadProgress: Math.round(progress.percentage) }
+                : mediaFile
+            )
+          );
+        }
+      });
+
+      if (response.data?.file) {
+        const uploadedFile = response.data.file;
+        setMediaFiles(prev =>
+          prev.map(mediaFile =>
+            mediaFile.id === fileId
+              ? {
+                  ...mediaFile,
+                  id: uploadedFile.id,
+                  url: uploadedFile.url,
+                  thumbnail: uploadedFile.thumbnail_url,
+                  uploadProgress: 100
+                }
+              : mediaFile
+          )
+        );
         toast.success('File uploaded successfully!');
       }
-      
-      setMediaFiles(prev => 
-        prev.map(file => 
-          file.id === fileId 
-            ? { ...file, uploadProgress: Math.round(progress) }
-            : file
-        )
-      );
-    }, 200);
+    } catch (error) {
+      console.error('Upload failed:', error);
+      toast.error('Upload failed');
+      // Remove failed upload from list
+      setMediaFiles(prev => prev.filter(mediaFile => mediaFile.id !== fileId));
+    }
   };
 
-  const removeFile = (fileId: string) => {
-    setMediaFiles(prev => prev.filter(file => file.id !== fileId));
-    toast.success('File removed');
+  const removeFile = async (fileId: string) => {
+    try {
+      await MediaService.deleteMediaFile(fileId);
+      setMediaFiles(prev => prev.filter(file => file.id !== fileId));
+      toast.success('File removed');
+    } catch (error) {
+      console.error('Failed to remove file:', error);
+      toast.error('Failed to remove file');
+    }
   };
 
   const updateAltText = (fileId: string, altText: string) => {
@@ -183,12 +241,25 @@ export const MediaUpload = () => {
       </Card>
 
       {/* Media Library */}
-      {mediaFiles.length > 0 && (
-        <Card className="bg-white dark:bg-gray-800">
-          <CardHeader>
-            <CardTitle>Media Library ({mediaFiles.length} files)</CardTitle>
-          </CardHeader>
-          <CardContent>
+      <Card className="bg-white dark:bg-gray-800">
+        <CardHeader>
+          <CardTitle>
+            Media Library {!loading && `(${mediaFiles.length} files)`}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                <p className="text-gray-500">Loading media files...</p>
+              </div>
+            </div>
+          ) : mediaFiles.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">No media files uploaded yet.</p>
+            </div>
+          ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {mediaFiles.map((file) => (
                 <div key={file.id} className="border rounded-lg p-4 space-y-3">
@@ -275,9 +346,9 @@ export const MediaUpload = () => {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
