@@ -16,6 +16,9 @@ export const AuthCallback: React.FC = () => {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
+        const code = searchParams.get('code');
+        const state = searchParams.get('state');
+
         // Check for error parameters
         const errorParam = searchParams.get('error');
         const errorMessage = searchParams.get('message');
@@ -26,6 +29,57 @@ export const AuthCallback: React.FC = () => {
           return;
         }
 
+        // Check if this is an invitation acceptance flow
+        const invitationToken = localStorage.getItem('invitation_token');
+        const oauthMode = localStorage.getItem('oauth_mode');
+
+        if (code && invitationToken && oauthMode === 'invitation') {
+          // Handle invitation acceptance via Google OAuth
+          try {
+            const API_URL = import.meta.env.VITE_API_URL || 'https://vibe-tribe-backend-8yvp.onrender.com/api/v1';
+
+            const response = await fetch(`${API_URL}/invitations/accept-google`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                token: invitationToken,
+                googleCode: code
+              }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+              // Clean up localStorage
+              localStorage.removeItem('invitation_token');
+              localStorage.removeItem('oauth_mode');
+
+              setStatus('success');
+              setIsNewUser(true);
+
+              // Redirect to login page after successful acceptance
+              setTimeout(() => {
+                window.location.href = '/login?message=invitation-accepted-google';
+              }, 2000);
+              return;
+            } else {
+              throw new Error(data.error || 'Failed to accept invitation');
+            }
+          } catch (error) {
+            console.error('Invitation acceptance error:', error);
+            setError(error instanceof Error ? error.message : 'Failed to accept invitation');
+            setStatus('error');
+
+            // Clean up localStorage on error
+            localStorage.removeItem('invitation_token');
+            localStorage.removeItem('oauth_mode');
+            return;
+          }
+        }
+
+        // Regular Google OAuth authentication flow
         // Get token and user data from URL parameters
         const token = searchParams.get('token');
         const userParam = searchParams.get('user');
@@ -39,7 +93,7 @@ export const AuthCallback: React.FC = () => {
 
         // Parse user data
         const userData = JSON.parse(decodeURIComponent(userParam));
-        
+
         // Store authentication data
         localStorage.setItem('auth_token', token);
         localStorage.setItem('user', JSON.stringify(userData));

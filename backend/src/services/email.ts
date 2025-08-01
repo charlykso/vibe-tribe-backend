@@ -3,7 +3,7 @@ import nodemailer from 'nodemailer';
 
 // Email service configuration
 interface EmailConfig {
-  provider: 'sendgrid' | 'nodemailer';
+  provider: 'sendgrid' | 'nodemailer' | 'console';
   sendgridApiKey?: string;
   smtpConfig?: {
     host: string;
@@ -283,22 +283,55 @@ export class EmailService {
     return {
       subject: `You're invited to join ${organizationName} on Tribe`,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #333;">You're Invited!</h2>
-          <p>${inviterName} has invited you to join <strong>${organizationName}</strong> on Tribe.</p>
-          <p>Tribe helps teams manage their social media presence across multiple platforms.</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${invitationUrl}" 
-               style="background-color: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Accept Invitation
-            </a>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <!-- Header with Tribe Logo -->
+          <div style="text-align: center; padding: 30px 20px 20px; background: linear-gradient(135deg, #BA1863 0%, #E91E63 100%); border-radius: 8px 8px 0 0;">
+            <img src="https://vibe-tribe-manager.netlify.app/Tribe-svg-light.svg" alt="Tribe" style="height: 48px; width: auto; margin-bottom: 10px;" />
+            <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold;">You're Invited!</h1>
           </div>
-          <p style="color: #666; font-size: 14px;">
-            This invitation will expire in 7 days.
-          </p>
+
+          <!-- Content -->
+          <div style="padding: 30px 20px;">
+            <p style="font-size: 16px; line-height: 1.6; color: #333; margin-bottom: 20px;">
+              ${inviterName} has invited you to join <strong>${organizationName}</strong> on Tribe.
+            </p>
+            <p style="font-size: 14px; line-height: 1.6; color: #666; margin-bottom: 30px;">
+              Tribe helps teams manage their social media presence across multiple platforms with AI-powered content generation and analytics.
+            </p>
+
+            <!-- CTA Button -->
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${invitationUrl}"
+                 style="background-color: #BA1863; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold; font-size: 16px; box-shadow: 0 2px 8px rgba(186, 24, 99, 0.3);">
+                Accept Invitation
+              </a>
+            </div>
+
+            <!-- Footer -->
+            <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px;">
+              <p style="color: #666; font-size: 12px; text-align: center; margin: 0;">
+                This invitation will expire in 7 days. If you didn't expect this invitation, you can safely ignore this email.
+              </p>
+              <p style="color: #999; font-size: 11px; text-align: center; margin: 10px 0 0;">
+                © 2024 Tribe. All rights reserved.
+              </p>
+            </div>
+          </div>
         </div>
       `,
-      text: `${inviterName} has invited you to join ${organizationName} on Tribe. Accept the invitation: ${invitationUrl}`
+      text: `
+        You're invited to join ${organizationName} on Tribe!
+
+        ${inviterName} has invited you to join ${organizationName} on Tribe.
+
+        Tribe helps teams manage their social media presence across multiple platforms with AI-powered content generation and analytics.
+
+        To accept this invitation, visit: ${invitationUrl}
+
+        This invitation will expire in 7 days. If you didn't expect this invitation, you can safely ignore this email.
+
+        © 2024 Tribe. All rights reserved.
+      `
     };
   }
 

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,9 +20,14 @@ import {
   Video,
   File,
   Plus,
-  Star
+  Star,
+  Loader2,
+  Edit,
+  Trash2,
+  MoreVertical
 } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
+import { ContentTemplatesService, ContentTemplate, ContentItem as APIContentItem } from '@/lib/services/content-templates';
 
 interface ContentItem {
   id: string;
@@ -67,93 +73,85 @@ interface ContentTemplate {
 }
 
 export const SharedContentLibrary: React.FC = () => {
-  const [contentItems, setContentItems] = useState<ContentItem[]>([
-    {
-      id: '1',
-      title: 'Holiday Campaign Banner',
-      description: 'Main banner for holiday campaign 2024',
-      type: 'image',
-      url: '/api/placeholder/400/300',
-      thumbnail: '/api/placeholder/200/150',
-      size: 2048000,
-      format: 'PNG',
-      tags: ['holiday', 'campaign', 'banner'],
-      category: 'Marketing',
-      createdBy: {
-        id: '1',
-        name: 'Emma Davis',
-        avatar: '/api/placeholder/32/32'
-      },
-      createdAt: new Date('2024-01-10'),
-      lastModified: new Date('2024-01-15'),
-      downloads: 23,
-      likes: 12,
-      views: 156,
-      isPublic: true,
-      isFavorite: false
-    },
-    {
-      id: '2',
-      title: 'Product Demo Video',
-      description: 'Short demo video showcasing key features',
-      type: 'video',
-      url: '/api/placeholder/video.mp4',
-      thumbnail: '/api/placeholder/400/225',
-      size: 15728640,
-      format: 'MP4',
-      tags: ['product', 'demo', 'features'],
-      category: 'Product',
-      createdBy: {
-        id: '2',
-        name: 'Sarah Johnson',
-        avatar: '/api/placeholder/32/32'
-      },
-      createdAt: new Date('2024-01-08'),
-      lastModified: new Date('2024-01-12'),
-      downloads: 45,
-      likes: 28,
-      views: 234,
-      isPublic: true,
-      isFavorite: true
-    }
-  ]);
+  const queryClient = useQueryClient();
 
-  const [templates, setTemplates] = useState<ContentTemplate[]>([
-    {
-      id: '1',
-      title: 'Product Launch Announcement',
-      description: 'Template for announcing new product launches',
-      content: '🚀 Exciting news! We\'re thrilled to announce the launch of [PRODUCT_NAME]! \n\n✨ Key features:\n• [FEATURE_1]\n• [FEATURE_2]\n• [FEATURE_3]\n\nGet yours today: [LINK]\n\n#ProductLaunch #Innovation #[BRAND_HASHTAG]',
-      platform: ['twitter', 'linkedin', 'facebook'],
-      category: 'Product',
-      tags: ['launch', 'announcement', 'product'],
-      createdBy: {
-        id: '1',
-        name: 'Mike Chen',
-        avatar: '/api/placeholder/32/32'
-      },
-      createdAt: new Date('2024-01-05'),
-      uses: 15,
-      rating: 4.8
+  // Fetch content items (media files)
+  const {
+    data: contentItemsData,
+    isLoading: contentItemsLoading,
+    error: contentItemsError
+  } = useQuery({
+    queryKey: ['content-items', filterCategory, searchTerm],
+    queryFn: () => ContentTemplatesService.getContentItems({
+      category: filterCategory,
+      search: searchTerm,
+      limit: 50
+    }),
+    refetchInterval: 30000
+  });
+
+  // Fetch content templates
+  const {
+    data: templatesData,
+    isLoading: templatesLoading,
+    error: templatesError
+  } = useQuery({
+    queryKey: ['content-templates', filterCategory, searchTerm],
+    queryFn: () => ContentTemplatesService.getTemplates({
+      category: filterCategory,
+      search: searchTerm,
+      limit: 50
+    }),
+    refetchInterval: 30000
+  });
+
+  const contentItems = contentItemsData?.data?.items || [];
+  const templates = templatesData?.data?.templates || [];
+
+  // Mutations
+  const createTemplateMutation = useMutation({
+    mutationFn: ContentTemplatesService.createTemplate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['content-templates'] });
+      toast.success('Template created successfully');
     },
-    {
-      id: '2',
-      title: 'Weekly Team Update',
-      description: 'Template for sharing weekly team achievements',
-      content: '📊 Week in Review:\n\n🎯 This week we:\n• [ACHIEVEMENT_1]\n• [ACHIEVEMENT_2]\n• [ACHIEVEMENT_3]\n\n🚀 Next week focus:\n• [GOAL_1]\n• [GOAL_2]\n\n#TeamWork #Progress #[COMPANY_HASHTAG]',
-      platform: ['linkedin', 'twitter'],
-      category: 'Internal',
-      tags: ['update', 'team', 'weekly'],
-      createdBy: {
-        id: '2',
-        name: 'Alex Rivera',
-        avatar: '/api/placeholder/32/32'
-      },
-      createdAt: new Date('2024-01-03'),
-      uses: 8,
-      rating: 4.5
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to create template');
     }
-  ]);
+  });
+
+  const updateTemplateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      ContentTemplatesService.updateTemplate(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['content-templates'] });
+      toast.success('Template updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update template');
+    }
+  });
+
+  const deleteTemplateMutation = useMutation({
+    mutationFn: ContentTemplatesService.deleteTemplate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['content-templates'] });
+      toast.success('Template deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to delete template');
+    }
+  });
+
+  const useTemplateMutation = useMutation({
+    mutationFn: ContentTemplatesService.useTemplate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['content-templates'] });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to track template usage');
+    }
+  });
 
   const [activeTab, setActiveTab] = useState('assets');
   const [searchTerm, setSearchTerm] = useState('');
@@ -162,8 +160,63 @@ export const SharedContentLibrary: React.FC = () => {
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
 
-  const categories = ['Marketing', 'Product', 'Internal', 'Design', 'Social'];
+  // Template form state
+  const [templateForm, setTemplateForm] = useState({
+    title: '',
+    description: '',
+    content: '',
+    category: '',
+    platforms: [] as string[],
+    tags: '',
+    is_public: false
+  });
+
+  const categories = ContentTemplatesService.getTemplateCategories();
+  const contentCategories = ContentTemplatesService.getContentCategories();
   const types = ['image', 'video', 'template', 'document', 'audio'];
+  const platforms = ['twitter', 'linkedin', 'facebook', 'instagram', 'tiktok', 'youtube'];
+
+  // Template handlers
+  const handleCreateTemplate = async () => {
+    if (!templateForm.title || !templateForm.content || !templateForm.category) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      await createTemplateMutation.mutateAsync({
+        title: templateForm.title,
+        description: templateForm.description,
+        content: templateForm.content,
+        category: templateForm.category,
+        platforms: templateForm.platforms,
+        tags: templateForm.tags ? templateForm.tags.split(',').map(tag => tag.trim()) : [],
+        is_public: templateForm.is_public
+      });
+
+      // Reset form
+      setTemplateForm({
+        title: '',
+        description: '',
+        content: '',
+        category: '',
+        platforms: [],
+        tags: '',
+        is_public: false
+      });
+      setIsTemplateDialogOpen(false);
+    } catch (error) {
+      // Error is handled by the mutation
+    }
+  };
+
+  const handleUseTemplate = async (templateId: string) => {
+    try {
+      await useTemplateMutation.mutateAsync(templateId);
+    } catch (error) {
+      // Error is handled by the mutation
+    }
+  };
 
   const filteredContent = contentItems.filter(item => {
     const searchMatch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -176,8 +229,8 @@ export const SharedContentLibrary: React.FC = () => {
 
   const filteredTemplates = templates.filter(template => {
     const searchMatch = template.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       template.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       template.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+                       (template.description && template.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                       (template.tags && template.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())));
     const categoryMatch = filterCategory === 'all' || template.category === filterCategory;
     return searchMatch && categoryMatch;
   });
@@ -234,19 +287,14 @@ export const SharedContentLibrary: React.FC = () => {
     );
   };
 
-  const copyTemplate = (template: ContentTemplate) => {
-    navigator.clipboard.writeText(template.content);
-    setTemplates(prev => 
-      prev.map(t => 
-        t.id === template.id 
-          ? { ...t, uses: t.uses + 1 }
-          : t
-      )
-    );
-    toast({
-      title: "Template Copied",
-      description: "Template content copied to clipboard",
-    });
+  const copyTemplate = async (template: ContentTemplate) => {
+    try {
+      await navigator.clipboard.writeText(template.content);
+      await handleUseTemplate(template.id);
+      toast.success('Template copied to clipboard');
+    } catch (error) {
+      toast.error('Failed to copy template');
+    }
   };
 
   return (
@@ -337,14 +385,27 @@ export const SharedContentLibrary: React.FC = () => {
                 <DialogTitle>Create New Template</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <Input placeholder="Template title" />
-                <Textarea placeholder="Template description" />
-                <Textarea 
+                <Input
+                  placeholder="Template title"
+                  value={templateForm.title}
+                  onChange={(e) => setTemplateForm(prev => ({ ...prev, title: e.target.value }))}
+                />
+                <Textarea
+                  placeholder="Template description"
+                  value={templateForm.description}
+                  onChange={(e) => setTemplateForm(prev => ({ ...prev, description: e.target.value }))}
+                />
+                <Textarea
                   placeholder="Template content (use [VARIABLE_NAME] for placeholders)"
                   className="min-h-[200px]"
+                  value={templateForm.content}
+                  onChange={(e) => setTemplateForm(prev => ({ ...prev, content: e.target.value }))}
                 />
                 <div className="grid grid-cols-2 gap-4">
-                  <Select>
+                  <Select
+                    value={templateForm.category}
+                    onValueChange={(value) => setTemplateForm(prev => ({ ...prev, category: value }))}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Category" />
                     </SelectTrigger>
@@ -356,13 +417,21 @@ export const SharedContentLibrary: React.FC = () => {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Input placeholder="Tags (comma separated)" />
+                  <Input
+                    placeholder="Tags (comma separated)"
+                    value={templateForm.tags}
+                    onChange={(e) => setTemplateForm(prev => ({ ...prev, tags: e.target.value }))}
+                  />
                 </div>
                 <div className="flex justify-end space-x-2">
                   <Button variant="outline" onClick={() => setIsTemplateDialogOpen(false)}>
                     Cancel
                   </Button>
-                  <Button onClick={() => setIsTemplateDialogOpen(false)}>
+                  <Button
+                    onClick={handleCreateTemplate}
+                    disabled={createTemplateMutation.isPending}
+                  >
+                    {createTemplateMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                     Create Template
                   </Button>
                 </div>
@@ -381,8 +450,18 @@ export const SharedContentLibrary: React.FC = () => {
         </TabsList>
 
         <TabsContent value="assets" className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
-            {filteredContent.map((item) => (
+          {contentItemsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin" />
+              <span className="ml-2">Loading content items...</span>
+            </div>
+          ) : contentItemsError ? (
+            <div className="text-center py-8 text-red-600">
+              Failed to load content items. Please try again.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
+              {filteredContent.map((item) => (
               <Card key={item.id} className="hover:shadow-lg transition-shadow">
                 <CardContent className="p-4">
                   <div className="relative mb-3">
@@ -464,13 +543,24 @@ export const SharedContentLibrary: React.FC = () => {
                   </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
-            {filteredTemplates.map((template) => (
+          {templatesLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin" />
+              <span className="ml-2">Loading templates...</span>
+            </div>
+          ) : templatesError ? (
+            <div className="text-center py-8 text-red-600">
+              Failed to load templates. Please try again.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
+              {filteredTemplates.map((template) => (
               <Card key={template.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
@@ -508,7 +598,7 @@ export const SharedContentLibrary: React.FC = () => {
                       </div>
 
                       <div className="flex flex-wrap gap-1">
-                        {template.tags.map(tag => (
+                        {template.tags && template.tags.map(tag => (
                           <Badge key={tag} variant="secondary" className="text-xs">
                             {tag}
                           </Badge>
@@ -519,24 +609,24 @@ export const SharedContentLibrary: React.FC = () => {
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-2 border-t gap-2">
                       <div className="flex items-center space-x-2">
                         <Avatar className="w-5 h-5">
-                          <AvatarImage src={template.createdBy.avatar} />
-                          <AvatarFallback>{template.createdBy.name[0]}</AvatarFallback>
+                          <AvatarFallback>U</AvatarFallback>
                         </Avatar>
                         <span className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                          {template.createdBy.name}
+                          Created by you
                         </span>
                       </div>
 
                       <div className="flex items-center space-x-4 text-xs text-gray-500">
-                        <span>{template.uses} uses</span>
-                        <span>⭐ {template.rating}</span>
+                        <span>{template.uses || 0} uses</span>
+                        <span>⭐ {template.rating || 0}</span>
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

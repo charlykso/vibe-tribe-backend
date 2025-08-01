@@ -21,6 +21,7 @@ import socialAccountRoutes from './routes/socialAccounts.js';
 import postsRoutes from './routes/posts.js';
 import analyticsRoutes from './routes/analytics.js';
 import mediaRoutes from './routes/media.js';
+import contentTemplatesRoutes from './routes/content-templates.js';
 // Phase 3 routes
 import communitiesRoutes from './routes/communities.js';
 // import communityRoutes from './routes/community.js'; // Temporarily disabled for deployment
@@ -131,6 +132,120 @@ app.use('/api/v1/social-accounts', authMiddleware, socialAccountRoutes);
 app.use('/api/v1/posts', authMiddleware, postsRoutes);
 app.use('/api/v1/analytics', authMiddleware, analyticsRoutes);
 app.use('/api/v1/media', authMiddleware, mediaRoutes);
+app.use('/api/v1/content-templates', authMiddleware, contentTemplatesRoutes);
+// Development endpoint to clear invitations (no auth required)
+app.delete('/api/v1/dev/clear-invitations', async (req, res) => {
+  try {
+    const { getFirestoreClient } = await import('./services/database.js');
+    const db = getFirestoreClient();
+
+    // Get all invitations
+    const snapshot = await db.collection('invitations').get();
+
+    // Delete all invitations
+    const batch = db.batch();
+    snapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+
+    await batch.commit();
+
+    res.json({
+      success: true,
+      message: `Cleared ${snapshot.docs.length} invitations`
+    });
+  } catch (error) {
+    console.error('Error clearing invitations:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to clear invitations'
+    });
+  }
+});
+
+// Development endpoint to make user admin (no auth required)
+app.post('/api/v1/dev/make-admin', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email is required'
+      });
+    }
+
+    const { getFirestoreClient } = await import('./services/database.js');
+    const db = getFirestoreClient();
+
+    // Find user by email
+    const userSnapshot = await db.collection('users').where('email', '==', email).get();
+
+    if (userSnapshot.empty) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    const userDoc = userSnapshot.docs[0];
+    const userData = userDoc.data();
+
+    // Update user role to admin
+    await userDoc.ref.update({
+      role: 'admin',
+      updated_at: new Date()
+    });
+
+    res.json({
+      success: true,
+      message: `User ${email} is now an admin`,
+      user: {
+        id: userDoc.id,
+        email: userData.email,
+        name: userData.name,
+        role: 'admin',
+        organization_id: userData.organization_id
+      }
+    });
+  } catch (error) {
+    console.error('Error making user admin:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to make user admin'
+    });
+  }
+});
+
+// Development endpoint to show current user info
+app.get('/api/v1/dev/current-user', authMiddleware, async (req, res) => {
+  try {
+    const user = (req as any).user;
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: 'Not authenticated'
+      });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        organization_id: user.organization_id
+      }
+    });
+  } catch (error) {
+    console.error('Error getting current user:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get current user'
+    });
+  }
+});
+
 // Phase 3 routes
 app.use('/api/v1/communities', authMiddleware, communitiesRoutes);
 // app.use('/api/v1/community', authMiddleware, communityRoutes); // Temporarily disabled for deployment

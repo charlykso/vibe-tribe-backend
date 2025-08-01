@@ -15,6 +15,7 @@ import { AuthCallback } from "./pages/AuthCallback";
 import { OAuthCallback } from "./pages/OAuthCallback";
 import { PrivacyPolicy } from "./pages/PrivacyPolicy";
 import { DemoOAuth } from "./pages/DemoOAuth";
+import { AcceptInvitation } from "./pages/AcceptInvitation";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import NotFound from "./pages/NotFound";
 
@@ -35,6 +36,7 @@ const App = () => (
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/accept-invitation" element={<AcceptInvitation />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/oauth/callback" element={<OAuthCallback />} />
               <Route path="/oauth/demo" element={<DemoOAuth />} />

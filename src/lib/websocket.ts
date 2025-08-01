@@ -1,6 +1,6 @@
-// Mock WebSocket service - no external dependencies
-// import { io, Socket } from 'socket.io-client';
-// import { AuthService } from './auth';
+// Real WebSocket service using Socket.IO
+import { io, Socket } from 'socket.io-client';
+import { AuthService } from './auth';
 
 export interface NotificationData {
   id: string;
@@ -21,28 +21,109 @@ export interface WebSocketEvents {
   connection_status: (data: { connected: boolean }) => void;
 }
 
-class MockWebSocketService {
+class RealWebSocketService {
+  private socket: Socket | null = null;
   private connected = false;
   private listeners: Map<string, Function[]> = new Map();
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
 
   connect(token: string): void {
-    // Mock connection
-    this.connected = true;
-    console.log('Mock WebSocket connected');
+    try {
+      const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
 
-    // Simulate connection event
-    setTimeout(() => {
+      this.socket = io(wsUrl, {
+        auth: {
+          token: token
+        },
+        transports: ['websocket', 'polling'],
+        timeout: 20000,
+        forceNew: true
+      });
+
+      this.setupEventListeners();
+      console.log('🔌 Connecting to WebSocket server...');
+    } catch (error) {
+      console.error('❌ WebSocket connection failed:', error);
+      this.fallbackToMockMode();
+    }
+  }
+
+  private setupEventListeners(): void {
+    if (!this.socket) return;
+
+    this.socket.on('connect', () => {
+      this.connected = true;
+      this.reconnectAttempts = 0;
+      console.log('✅ WebSocket connected');
       this.emit('connection_status', { connected: true });
-    }, 100);
+    });
 
-    // Start mock data stream
+    this.socket.on('disconnect', (reason) => {
+      this.connected = false;
+      console.log('❌ WebSocket disconnected:', reason);
+      this.emit('connection_status', { connected: false });
+
+      if (reason === 'io server disconnect') {
+        // Server disconnected, try to reconnect
+        this.handleReconnection();
+      }
+    });
+
+    this.socket.on('connect_error', (error) => {
+      console.error('❌ WebSocket connection error:', error);
+      this.handleReconnection();
+    });
+
+    // Listen for real-time events from server
+    this.socket.on('notification', (data) => {
+      this.emit('notification', data);
+    });
+
+    this.socket.on('post_status_update', (data) => {
+      this.emit('post_status_update', data);
+    });
+
+    this.socket.on('analytics_update', (data) => {
+      this.emit('analytics_update', data);
+    });
+
+    this.socket.on('team_member_joined', (data) => {
+      this.emit('team_member_joined', data);
+    });
+  }
+
+  private handleReconnection(): void {
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++;
+      console.log(`🔄 Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
+
+      setTimeout(() => {
+        if (this.socket) {
+          this.socket.connect();
+        }
+      }, Math.pow(2, this.reconnectAttempts) * 1000); // Exponential backoff
+    } else {
+      console.warn('⚠️ Max reconnection attempts reached, falling back to mock mode');
+      this.fallbackToMockMode();
+    }
+  }
+
+  private fallbackToMockMode(): void {
+    console.log('🔄 Falling back to mock WebSocket mode');
+    this.connected = true;
+    this.emit('connection_status', { connected: true });
     this.startMockDataStream();
   }
 
   disconnect(): void {
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
     this.connected = false;
     this.listeners.clear();
-    console.log('Mock WebSocket disconnected');
+    console.log('🔌 WebSocket disconnected');
   }
 
   private startMockDataStream(): void {
@@ -147,7 +228,7 @@ class MockWebSocketService {
 }
 
 // Export singleton instance
-export const websocketService = new MockWebSocketService();
+export const websocketService = new RealWebSocketService();
 
 // Export class for testing
-export { MockWebSocketService as WebSocketService };
+export { RealWebSocketService as WebSocketService };

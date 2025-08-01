@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { getFirestoreClient, getServerTimestamp } from '../services/database.js';
 import { asyncHandler, ValidationError, NotFoundError } from '../middleware/errorHandler.js';
-import { AuthenticatedRequest, requireRole } from '../middleware/auth.js';
+import { authMiddleware, AuthenticatedRequest, requireRole } from '../middleware/auth.js';
 import { getAuth } from 'firebase-admin/auth';
 import { User } from '../types/database.js';
 
@@ -92,6 +92,89 @@ router.put('/profile', asyncHandler(async (req: AuthenticatedRequest, res) => {
   });
 }));
 
+// GET /api/v1/users/organization/members - Get organization members (for member management)
+router.get('/organization/members', authMiddleware, asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const firestore = getFirestoreClient();
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 50;
+  const search = req.query.search as string;
+  const role = req.query.role as string;
+  const status = req.query.status as string;
+
+  // Build Firestore query (removed orderBy to avoid index requirement)
+  let query = firestore
+    .collection('users')
+    .where('organization_id', '==', req.user!.organization_id!);
+
+  // Apply role filter
+  if (role) {
+    query = query.where('role', '==', role);
+  }
+
+  // Get all matching documents first (for search and count)
+  const snapshot = await query.get();
+  let users = snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  })) as User[];
+
+  // Sort by created_at in memory (newest first)
+  users.sort((a, b) => {
+    const aDate = new Date((a.created_at as any)?.toDate?.() || a.created_at || 0);
+    const bDate = new Date((b.created_at as any)?.toDate?.() || b.created_at || 0);
+    return bDate.getTime() - aDate.getTime();
+  });
+
+  // Apply search filter in memory (Firestore doesn't support text search)
+  if (search) {
+    const searchLower = search.toLowerCase();
+    users = users.filter(user =>
+      user.name?.toLowerCase().includes(searchLower) ||
+      user.email?.toLowerCase().includes(searchLower)
+    );
+  }
+
+  // Apply status filter (assuming active/inactive based on some criteria)
+  if (status && status !== 'all') {
+    // For now, we'll consider all users as 'active' unless they have a specific status field
+    users = users.filter(user => {
+      if (status === 'active') return (user as any).is_active !== false;
+      if (status === 'inactive') return (user as any).is_active === false;
+      return true;
+    });
+  }
+
+  // Calculate pagination
+  const total = users.length;
+  const pages = Math.ceil(total / limit);
+  const offset = (page - 1) * limit;
+  const paginatedUsers = users.slice(offset, offset + limit);
+
+  // Transform users to include stats (mock stats for now)
+  const membersWithStats = paginatedUsers.map(user => ({
+    ...user,
+    stats: {
+      posts_count: 0, // TODO: Get actual post count
+      comments_count: 0, // TODO: Get actual comment count
+      reactions_count: 0, // TODO: Get actual reaction count
+      last_active_at: user.updated_at || user.created_at
+    }
+  }));
+
+  res.json({
+    success: true,
+    data: {
+      members: membersWithStats,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages
+      }
+    }
+  });
+}));
+
 // GET /api/v1/users (Admin only)
 router.get('/', requireRole(['admin']), asyncHandler(async (req: AuthenticatedRequest, res) => {
   const firestore = getFirestoreClient();
@@ -100,11 +183,10 @@ router.get('/', requireRole(['admin']), asyncHandler(async (req: AuthenticatedRe
   const search = req.query.search as string;
   const role = req.query.role as string;
 
-  // Build Firestore query
+  // Build Firestore query (removed orderBy to avoid index requirement)
   let query = firestore
     .collection('users')
-    .where('organization_id', '==', req.user!.organization_id!)
-    .orderBy('created_at', 'desc');
+    .where('organization_id', '==', req.user!.organization_id!);
 
   // Apply role filter
   if (role) {
@@ -126,6 +208,13 @@ router.get('/', requireRole(['admin']), asyncHandler(async (req: AuthenticatedRe
       user.email?.toLowerCase().includes(searchLower)
     );
   }
+
+  // Sort by created_at in memory (newest first)
+  users.sort((a, b) => {
+    const aDate = new Date((a.created_at as any)?.toDate?.() || a.created_at || 0);
+    const bDate = new Date((b.created_at as any)?.toDate?.() || b.created_at || 0);
+    return bDate.getTime() - aDate.getTime();
+  });
 
   // Calculate pagination
   const total = users.length;

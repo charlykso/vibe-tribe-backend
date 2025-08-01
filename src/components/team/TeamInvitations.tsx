@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { UserPlus, Users, Mail, Shield } from 'lucide-react';
+import { UserPlus, Users, Mail, Shield, Loader2 } from 'lucide-react';
 import { InviteMemberDialog } from './InviteMemberDialog';
 import { InvitationsList } from './InvitationsList';
+import { InvitationsService, TeamStats } from '@/lib/services/invitations';
 
 interface TeamInvitationsProps {
   className?: string;
@@ -12,9 +13,37 @@ interface TeamInvitationsProps {
 export const TeamInvitations: React.FC<TeamInvitationsProps> = ({ className }) => {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [teamStats, setTeamStats] = useState<TeamStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  const fetchTeamStats = async () => {
+    try {
+      setStatsLoading(true);
+      const response = await InvitationsService.getTeamStats();
+      console.log('📊 Team stats response:', response);
+      // The API client returns { data: { success: true, data: { stats } }, status }
+      // So we need to access response.data.data to get the actual stats
+      const statsData = (response.data as any).data;
+      setTeamStats(statsData);
+    } catch (error) {
+      console.error('Failed to fetch team stats:', error);
+      // Set default values on error
+      setTeamStats({
+        totalMembers: 0,
+        pendingInvites: 0,
+        admins: 0
+      });
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTeamStats();
+  }, [refreshTrigger]);
 
   const handleInvitationSent = () => {
-    // Trigger refresh of invitations list
+    // Trigger refresh of invitations list and stats
     setRefreshTrigger(prev => prev + 1);
   };
 
@@ -37,7 +66,13 @@ export const TeamInvitations: React.FC<TeamInvitationsProps> = ({ className }) =
               <Users className="w-5 h-5 text-blue-600" />
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Members</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">12</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {statsLoading ? (
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  ) : (
+                    teamStats?.totalMembers || 0
+                  )}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -49,7 +84,13 @@ export const TeamInvitations: React.FC<TeamInvitationsProps> = ({ className }) =
               <Mail className="w-5 h-5 text-yellow-600" />
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pending Invites</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">3</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {statsLoading ? (
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  ) : (
+                    teamStats?.pendingInvites || 0
+                  )}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -61,7 +102,13 @@ export const TeamInvitations: React.FC<TeamInvitationsProps> = ({ className }) =
               <Shield className="w-5 h-5 text-green-600" />
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Admins</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">2</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {statsLoading ? (
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  ) : (
+                    teamStats?.admins || 0
+                  )}
+                </p>
               </div>
             </div>
           </CardContent>

@@ -302,7 +302,10 @@ export const initializeCollections = async (): Promise<void> => {
       'social_accounts',
       'posts',
       'analytics',
-      'oauth_states'
+      'oauth_states',
+      'communities',
+      'community_members',
+      'invitations'
     ];
 
     for (const collectionName of collections) {

@@ -73,6 +73,16 @@ import authRoutes from './routes/auth.js';
 app.use('/api/v1/auth', authRoutes);
 console.log('✅ Auth routes loaded');
 
+// Add community routes
+import communityRoutes from './routes/communities.js';
+app.use('/api/v1/communities', communityRoutes);
+console.log('✅ Community routes loaded');
+
+// Add invitation routes
+import invitationRoutes from './routes/invitations.js';
+app.use('/api/v1/invitations', invitationRoutes);
+console.log('✅ Invitation routes loaded');
+
 // OAuth routes require database - add placeholder endpoints
 console.log('⚠️ OAuth routes skipped (require database initialization)');
 
@@ -143,6 +153,36 @@ app.get('/api/v1/ai/status', (req, res) => {
     status: 'disabled',
     note: 'Enable database to access full AI functionality'
   });
+});
+
+// Add test endpoint for communities (no auth required)
+app.get('/api/v1/test/communities', async (req, res) => {
+  try {
+    console.log('🔍 Test communities endpoint accessed');
+    const { getFirestoreClient } = await import('./services/database.js');
+    const firestore = getFirestoreClient();
+
+    // Get all communities
+    const snapshot = await firestore.collection('communities').get();
+    const communities = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    console.log('✅ Test communities fetched:', communities.length);
+
+    res.json({
+      success: true,
+      data: communities,
+      count: communities.length
+    });
+  } catch (error) {
+    console.error('❌ Test communities error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
 });
 
 // Error handling middleware

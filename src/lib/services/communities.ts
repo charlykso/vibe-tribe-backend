@@ -29,20 +29,18 @@ export interface CommunityMember {
   id: string;
   community_id: string;
   platform_user_id: string;
-  username: string;
-  display_name: string;
+  username?: string;
+  display_name?: string;
   avatar_url?: string;
   email?: string;
   join_date?: string;
-  status: 'active' | 'inactive' | 'banned' | 'pending';
-  role: 'member' | 'moderator' | 'admin';
   engagement_score: number;
   sentiment_score: number;
   message_count: number;
   last_active_at?: string;
   last_message_at?: string;
-  roles: string[];
-  tags: string[];
+  roles: string[]; // ['admin', 'moderator', 'member']
+  tags: string[]; // ['vip', 'supporter', 'active', 'new']
   metadata: Record<string, any>;
   created_at: string;
   updated_at: string;

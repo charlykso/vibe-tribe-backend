@@ -62,7 +62,8 @@ export class InvitationsService {
   // Cancel an invitation
   static async cancelInvitation(invitationId: string): Promise<ApiResponse<{ message: string }>> {
     try {
-      return await apiClient.put<{ message: string }>(`/invitations/${invitationId}/cancel`);
+      console.log('🗑️ Canceling invitation:', invitationId);
+      return await apiClient.delete<{ message: string }>(`/invitations/${invitationId}`);
     } catch (error) {
       console.error('Failed to cancel invitation:', error);
       throw error;
@@ -98,4 +99,20 @@ export class InvitationsService {
       throw error;
     }
   }
+
+  // Get team statistics
+  static async getTeamStats(): Promise<ApiResponse<TeamStats>> {
+    try {
+      return await apiClient.get<TeamStats>('/invitations/team-stats');
+    } catch (error) {
+      console.error('Failed to fetch team stats:', error);
+      throw error;
+    }
+  }
+}
+
+export interface TeamStats {
+  totalMembers: number;
+  pendingInvites: number;
+  admins: number;
 }

@@ -230,6 +230,33 @@ router.get('/config', asyncHandler(async (req: AuthenticatedRequest, res) => {
   });
 }));
 
+// GET /api/v1/media - List uploaded media files
+router.get('/', asyncHandler(async (req: AuthenticatedRequest, res) => {
+  // For now, return empty array since we don't store media metadata in database
+  // In a full implementation, you would store media metadata in Firestore
+  // and query it here with pagination, filtering, etc.
+
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 20;
+  const search = req.query.search as string;
+  const category = req.query.category as string;
+
+  // TODO: Implement actual media listing from database
+  // For now, return empty response to prevent frontend errors
+  res.json({
+    success: true,
+    data: {
+      files: [],
+      pagination: {
+        page,
+        limit,
+        total: 0,
+        pages: 0
+      }
+    }
+  });
+}));
+
 // Error handling for multer
 router.use((error: any, req: any, res: any, next: any) => {
   if (error instanceof multer.MulterError) {

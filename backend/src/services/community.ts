@@ -50,22 +50,54 @@ export class CommunityService {
 
       console.log('🔍 Raw query result - docs found:', snapshot.docs.length);
 
-      // Filter active communities and sort in memory
-      const communities = snapshot.docs
-        .map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        } as Community))
-        .filter(community => community.is_active !== false) // Include if is_active is true or undefined
-        .sort((a, b) => {
-          // Sort by created_at descending
-          const aDate = (a.created_at as any)?.toDate ? (a.created_at as any).toDate() : new Date((a.created_at as any) || 0);
-          const bDate = (b.created_at as any)?.toDate ? (b.created_at as any).toDate() : new Date((b.created_at as any) || 0);
-          return bDate.getTime() - aDate.getTime();
-        });
+      // Filter active communities and get real-time member counts
+      const communities = [];
 
-      console.log('✅ Filtered and sorted communities:', communities.length);
-      console.log('🔍 Communities data:', communities.map(c => ({ id: c.id, name: c.name, platform: c.platform })));
+      for (const doc of snapshot.docs) {
+        const communityData = doc.data() as Community;
+
+        // Skip inactive communities
+        if (communityData.is_active === false) continue;
+
+        // Get real-time member count
+        const membersSnapshot = await db
+          .collection('community_members')
+          .where('community_id', '==', doc.id)
+          .get();
+
+        const totalMembers = membersSnapshot.docs.length;
+        const activeMembers = membersSnapshot.docs.filter(memberDoc =>
+          memberDoc.data().is_active !== false
+        ).length;
+
+        console.log(`📊 Community ${communityData.name}: ${totalMembers} total, ${activeMembers} active members`);
+
+        communities.push({
+          id: doc.id,
+          ...communityData,
+          member_count: totalMembers,
+          active_member_count: activeMembers
+        } as Community);
+      }
+
+      // Sort by member count descending, then by created_at descending
+      communities.sort((a, b) => {
+        if (b.member_count !== a.member_count) {
+          return b.member_count - a.member_count;
+        }
+        const aDate = (a.created_at as any)?.toDate ? (a.created_at as any).toDate() : new Date((a.created_at as any) || 0);
+        const bDate = (b.created_at as any)?.toDate ? (b.created_at as any).toDate() : new Date((b.created_at as any) || 0);
+        return bDate.getTime() - aDate.getTime();
+      });
+
+      console.log('✅ Communities with real-time member counts:', communities.length);
+      console.log('🔍 Communities data:', communities.map(c => ({
+        id: c.id,
+        name: c.name,
+        platform: c.platform,
+        member_count: c.member_count,
+        active_member_count: c.active_member_count
+      })));
 
       return communities;
     } catch (error) {

@@ -448,4 +448,34 @@ router.get('/:id/moderation', authMiddleware, async (req: Request, res: Response
   }
 });
 
+// DELETE /api/v1/communities/clear-invitations - Clear all invitations (development only)
+router.delete('/clear-invitations', async (req, res) => {
+  try {
+    const { getFirestoreClient } = await import('../services/database.js');
+    const db = getFirestoreClient();
+
+    // Get all invitations
+    const snapshot = await db.collection('invitations').get();
+
+    // Delete all invitations
+    const batch = db.batch();
+    snapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+
+    await batch.commit();
+
+    res.json({
+      success: true,
+      message: `Cleared ${snapshot.docs.length} invitations`
+    });
+  } catch (error) {
+    console.error('Error clearing invitations:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to clear invitations'
+    });
+  }
+});
+
 export default router;

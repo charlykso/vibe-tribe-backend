@@ -51,18 +51,29 @@ router.post('/invite', authMiddleware, asyncHandler(async (req: AuthenticatedReq
   }
 
   const { email, role, message } = validation.data;
-  const user = req.user!;
+  const user = req.user;
+
+  if (!user) {
+    throw new UnauthorizedError('User not authenticated');
+  }
+
+  console.log('🔍 Invitation request from user:', {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    organization_id: user.organization_id
+  });
 
   if (!user.organization_id) {
     throw new UnauthorizedError('User must belong to an organization to send invitations');
   }
 
+  const firestore = getFirestoreClient();
+
   // Only admins can send invitations
   if (user.role !== 'admin') {
     throw new UnauthorizedError('Only organization admins can send invitations');
   }
-
-  const firestore = getFirestoreClient();
 
   // Get organization details
   const orgDoc = await firestore.collection('organizations').doc(user.organization_id).get();
@@ -152,7 +163,11 @@ router.post('/invite', authMiddleware, asyncHandler(async (req: AuthenticatedReq
 // GET /api/v1/invitations
 // Get all invitations for the organization
 router.get('/', authMiddleware, asyncHandler(async (req: AuthenticatedRequest, res) => {
-  const user = req.user!;
+  const user = req.user;
+
+  if (!user) {
+    throw new UnauthorizedError('User not authenticated');
+  }
 
   if (!user.organization_id) {
     throw new UnauthorizedError('User must belong to an organization');
@@ -706,7 +721,11 @@ router.post('/accept-google', asyncHandler(async (req, res) => {
 // Cancel/revoke an invitation
 router.delete('/:invitationId', authMiddleware, asyncHandler(async (req: AuthenticatedRequest, res) => {
   const { invitationId } = req.params;
-  const user = req.user!;
+  const user = req.user;
+
+  if (!user) {
+    throw new UnauthorizedError('User not authenticated');
+  }
 
   if (!user.organization_id) {
     throw new UnauthorizedError('User must belong to an organization');
@@ -749,7 +768,11 @@ router.delete('/:invitationId', authMiddleware, asyncHandler(async (req: Authent
 // Resend an invitation email
 router.post('/:invitationId/resend', asyncHandler(async (req: AuthenticatedRequest, res) => {
   const { invitationId } = req.params;
-  const user = req.user!;
+  const user = req.user;
+
+  if (!user) {
+    throw new UnauthorizedError('User not authenticated');
+  }
 
   if (!user.organization_id) {
     throw new UnauthorizedError('User must belong to an organization');
@@ -811,6 +834,113 @@ router.post('/:invitationId/resend', asyncHandler(async (req: AuthenticatedReque
   } catch (error) {
     console.error('❌ Failed to resend invitation email:', error);
     throw new ValidationError('Failed to resend invitation email');
+  }
+}));
+
+// PUT /api/v1/invitations/:invitationId/cancel
+// Alternative endpoint for canceling invitations (for frontend compatibility)
+router.put('/:invitationId/cancel', authMiddleware, asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const { invitationId } = req.params;
+  const user = req.user;
+
+  if (!user) {
+    throw new UnauthorizedError('User not authenticated');
+  }
+
+  if (!user.organization_id) {
+    throw new UnauthorizedError('User must belong to an organization');
+  }
+
+  // Only admins can cancel invitations
+  if (user.role !== 'admin') {
+    throw new UnauthorizedError('Only organization admins can cancel invitations');
+  }
+
+  const firestore = getFirestoreClient();
+
+  // Get invitation
+  const invitationDoc = await firestore.collection('invitations').doc(invitationId).get();
+
+  if (!invitationDoc.exists) {
+    throw new NotFoundError('Invitation not found');
+  }
+
+  const invitation = invitationDoc.data();
+
+  // Verify invitation belongs to user's organization
+  if (invitation?.organization_id !== user.organization_id) {
+    throw new UnauthorizedError('Invitation does not belong to your organization');
+  }
+
+  // Update invitation status
+  await firestore.collection('invitations').doc(invitationId).update({
+    status: 'cancelled',
+    cancelled_at: getServerTimestamp(),
+    updated_at: getServerTimestamp()
+  });
+
+  console.log('✅ Invitation cancelled successfully via PUT endpoint');
+
+  res.json({
+    message: 'Invitation cancelled successfully'
+  });
+}));
+
+// GET /api/v1/invitations/team-stats
+// Get team statistics (total members, pending invites, admins)
+router.get('/team-stats', authMiddleware, asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const user = req.user;
+
+  if (!user) {
+    throw new UnauthorizedError('User not authenticated');
+  }
+
+  if (!user.organization_id) {
+    throw new UnauthorizedError('User must belong to an organization');
+  }
+
+  const firestore = getFirestoreClient();
+
+  try {
+    // Get total members in organization
+    const membersSnapshot = await firestore
+      .collection('users')
+      .where('organization_id', '==', user.organization_id)
+      .get();
+
+    const totalMembers = membersSnapshot.size;
+
+    // Count admins in organization
+    const adminCount = membersSnapshot.docs.filter(doc => {
+      const userData = doc.data();
+      return userData.role === 'admin';
+    }).length;
+
+    // Get pending invitations count
+    const pendingInvitationsSnapshot = await firestore
+      .collection('invitations')
+      .where('organization_id', '==', user.organization_id)
+      .where('status', '==', 'pending')
+      .get();
+
+    const pendingInvites = pendingInvitationsSnapshot.size;
+
+    const stats = {
+      totalMembers,
+      pendingInvites,
+      admins: adminCount
+    };
+
+    console.log('📊 Team stats for organization:', user.organization_id, stats);
+
+    res.json({
+      success: true,
+      data: stats
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching team stats:', error);
+    throw new ValidationError('Failed to fetch team statistics');
   }
 }));
 

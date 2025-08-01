@@ -41,11 +41,10 @@ router.get('/', asyncHandler(async (req: AuthenticatedRequest, res) => {
   const platform = req.query.platform as string;
   const search = req.query.search as string;
 
-  // Build Firestore query
+  // Build Firestore query (removed orderBy to avoid index requirement)
   let query = firestore
     .collection('posts')
-    .where(req.user!.organization_id ? 'organization_id' : 'user_id', '==', req.user!.organization_id || req.user!.id)
-    .orderBy('created_at', 'desc');
+    .where(req.user!.organization_id ? 'organization_id' : 'user_id', '==', req.user!.organization_id || req.user!.id);
 
   // Apply status filter
   if (status) {
@@ -72,6 +71,13 @@ router.get('/', asyncHandler(async (req: AuthenticatedRequest, res) => {
       post.content?.toLowerCase().includes(searchLower)
     );
   }
+
+  // Sort by created_at in memory (newest first)
+  posts.sort((a, b) => {
+    const aDate = new Date((a.created_at as any)?.toDate?.() || a.created_at || 0);
+    const bDate = new Date((b.created_at as any)?.toDate?.() || b.created_at || 0);
+    return bDate.getTime() - aDate.getTime();
+  });
 
   // Get user data for each post
   const postsWithUsers = await Promise.all(
@@ -502,18 +508,24 @@ router.post('/:id/publish', asyncHandler(async (req: AuthenticatedRequest, res) 
 router.get('/drafts', asyncHandler(async (req: AuthenticatedRequest, res) => {
   const firestore = getFirestoreClient();
 
-  // Get draft posts for the organization
+  // Get draft posts for the organization (removed orderBy to avoid index requirement)
   const snapshot = await firestore
     .collection('posts')
     .where('organization_id', '==', req.user!.organization_id!)
     .where('status', '==', 'draft')
-    .orderBy('updated_at', 'desc')
     .get();
 
-  const drafts = snapshot.docs.map(doc => ({
+  let drafts = snapshot.docs.map(doc => ({
     id: doc.id,
     ...doc.data()
   })) as Post[];
+
+  // Sort by updated_at in memory (newest first)
+  drafts.sort((a, b) => {
+    const aDate = new Date((a.updated_at as any)?.toDate?.() || (a.created_at as any)?.toDate?.() || a.updated_at || a.created_at || 0);
+    const bDate = new Date((b.updated_at as any)?.toDate?.() || (b.created_at as any)?.toDate?.() || b.updated_at || b.created_at || 0);
+    return bDate.getTime() - aDate.getTime();
+  });
 
   // Get user data for each draft
   const draftsWithUsers = await Promise.all(
@@ -550,6 +562,69 @@ router.get('/drafts', asyncHandler(async (req: AuthenticatedRequest, res) => {
 
   res.json({
     drafts: draftsWithUsers
+  });
+}));
+
+// GET /api/v1/posts/scheduled
+router.get('/scheduled', asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const firestore = getFirestoreClient();
+
+  // Get scheduled posts for the organization (removed orderBy to avoid index requirement)
+  const snapshot = await firestore
+    .collection('posts')
+    .where('organization_id', '==', req.user!.organization_id!)
+    .where('status', '==', 'scheduled')
+    .get();
+
+  let scheduledPosts = snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  })) as Post[];
+
+  // Sort by scheduled_at in memory (earliest first)
+  scheduledPosts.sort((a, b) => {
+    const aDate = new Date((a.scheduled_at as any)?.toDate?.() || (a.created_at as any)?.toDate?.() || a.scheduled_at || a.created_at || 0);
+    const bDate = new Date((b.scheduled_at as any)?.toDate?.() || (b.created_at as any)?.toDate?.() || b.scheduled_at || b.created_at || 0);
+    return aDate.getTime() - bDate.getTime();
+  });
+
+  // Get user data for each scheduled post
+  const scheduledWithUsers = await Promise.all(
+    scheduledPosts.map(async (post) => {
+      if (post.user_id) {
+        const userDoc = await firestore.collection('users').doc(post.user_id).get();
+        if (userDoc.exists) {
+          const userData = userDoc.data();
+          return {
+            id: post.id,
+            title: post.title,
+            content: post.content,
+            platforms: post.platforms,
+            scheduled_at: post.scheduled_at,
+            created_at: post.created_at,
+            updated_at: post.updated_at,
+            users: {
+              id: userDoc.id,
+              name: userData?.name
+            }
+          };
+        }
+      }
+      return {
+        id: post.id,
+        title: post.title,
+        content: post.content,
+        platforms: post.platforms,
+        scheduled_at: post.scheduled_at,
+        created_at: post.created_at,
+        updated_at: post.updated_at,
+        users: null
+      };
+    })
+  );
+
+  res.json({
+    scheduled: scheduledWithUsers
   });
 }));
 

@@ -19,7 +19,8 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
-  Loader2
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { InviteMemberDialog } from '@/components/team/InviteMemberDialog';
@@ -44,15 +45,17 @@ interface Member {
 // Helper function to convert CommunityMember to Member for UI compatibility
 const mapCommunityMemberToMember = (communityMember: CommunityMember): Member => ({
   id: communityMember.id,
-  name: communityMember.display_name,
-  username: communityMember.username,
+  name: communityMember.display_name || communityMember.username || 'Unknown',
+  username: communityMember.username || 'unknown',
   avatar: communityMember.avatar_url || '/api/placeholder/40/40',
   email: communityMember.email,
   joinDate: new Date(communityMember.join_date || communityMember.created_at),
-  status: communityMember.status,
-  role: communityMember.role,
-  posts: communityMember.message_count,
-  engagement: Math.round(communityMember.engagement_score * 10) / 10, // Convert to percentage-like number
+  status: communityMember.is_active ? 'active' : 'inactive', // Map is_active boolean to status
+  role: (communityMember.roles && communityMember.roles.length > 0 ?
+    (communityMember.roles.includes('admin') ? 'admin' :
+     communityMember.roles.includes('moderator') ? 'moderator' : 'member') : 'member') as 'member' | 'moderator' | 'admin',
+  posts: communityMember.message_count || 0,
+  engagement: Math.round((communityMember.engagement_score || 0) * 10) / 10, // Convert to percentage-like number
   lastActive: new Date(communityMember.last_active_at || communityMember.updated_at),
   platforms: communityMember.metadata?.platforms || []
 });
@@ -76,13 +79,40 @@ export const CommunityManagement = () => {
   const { data: communitiesData } = useQuery({
     queryKey: ['communities'],
     queryFn: () => CommunitiesService.getCommunities(),
-    select: (response) => response.data?.communities || []
+    select: (response) => {
+      console.log('🏘️ Communities API response:', response);
+      // The API client returns { data: { success: true, data: { communities } }, status }
+      // So we need to access response.data.data.communities
+      const apiData = (response.data as any).data;
+      console.log('🏘️ API data extracted:', apiData);
+      return apiData?.communities || [];
+    }
   });
 
   // Set the first community as selected if none is selected
+  // Prefer communities with higher member counts
   useEffect(() => {
     if (communitiesData && communitiesData.length > 0 && !selectedCommunityId) {
-      setSelectedCommunityId(communitiesData[0].id);
+      console.log('🏘️ Available communities:', communitiesData.map(c => ({
+        id: c.id,
+        name: c.name,
+        member_count: c.member_count,
+        active_member_count: c.active_member_count
+      })));
+
+      // Sort communities by member count (descending) and select the one with most members
+      const sortedCommunities = [...communitiesData].sort((a, b) =>
+        (b.member_count || 0) - (a.member_count || 0)
+      );
+
+      const selectedCommunity = sortedCommunities[0];
+      console.log('🎯 Auto-selecting community:', {
+        id: selectedCommunity.id,
+        name: selectedCommunity.name,
+        member_count: selectedCommunity.member_count
+      });
+
+      setSelectedCommunityId(selectedCommunity.id);
     }
   }, [communitiesData, selectedCommunityId]);
 
@@ -100,10 +130,19 @@ export const CommunityManagement = () => {
       limit: 100
     }) : Promise.resolve({ data: { members: [], total: 0 } }),
     enabled: !!selectedCommunityId,
-    select: (response) => ({
-      members: (response.data?.members || []).map(mapCommunityMemberToMember),
-      total: response.data?.total || 0
-    })
+    refetchInterval: 30000, // Refresh every 30 seconds to catch new members
+    select: (response) => {
+      console.log('👥 Members API response:', response);
+      console.log('👥 Selected community ID:', selectedCommunityId);
+      // The API client returns { data: { success: true, data: { members, total } }, status }
+      // So we need to access response.data.data
+      const apiData = (response.data as any).data;
+      console.log('👥 API data extracted:', apiData);
+      return {
+        members: (apiData?.members || []).map(mapCommunityMemberToMember),
+        total: apiData?.total || 0
+      };
+    }
   });
 
   // Fetch moderation queue
@@ -117,10 +156,17 @@ export const CommunityManagement = () => {
       limit: 100
     }) : Promise.resolve({ data: { items: [], total: 0 } }),
     enabled: !!selectedCommunityId,
-    select: (response) => ({
-      items: (response.data?.items || []).map(mapModerationItem),
-      total: response.data?.total || 0
-    })
+    select: (response) => {
+      console.log('🛡️ Moderation API response:', response);
+      // The API client returns { data: { success: true, data: { items, total } }, status }
+      // So we need to access response.data.data
+      const apiData = (response.data as any).data;
+      console.log('🛡️ API data extracted:', apiData);
+      return {
+        items: (apiData?.items || []).map(mapModerationItem),
+        total: apiData?.total || 0
+      };
+    }
   });
 
   const members = membersData?.members || [];
@@ -281,6 +327,29 @@ export const CommunityManagement = () => {
             Moderation Settings
           </Button>
         </div>
+
+        {/* Community Selector */}
+        {communitiesData && communitiesData.length > 1 && (
+          <div className="flex flex-col gap-2">
+            <Select value={selectedCommunityId} onValueChange={setSelectedCommunityId}>
+              <SelectTrigger className="w-full sm:w-64">
+                <SelectValue placeholder="Select community" />
+              </SelectTrigger>
+              <SelectContent>
+                {communitiesData.map((community) => (
+                  <SelectItem key={community.id} value={community.id}>
+                    {community.name} ({community.member_count || 0} members)
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedCommunityId && (
+              <p className="text-xs text-blue-600 dark:text-blue-400">
+                Viewing: {communitiesData.find(c => c.id === selectedCommunityId)?.name || 'Unknown'}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Overview Stats */}
@@ -413,10 +482,20 @@ export const CommunityManagement = () => {
           {/* Members List */}
           <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
             <CardHeader className="pb-3 sm:pb-4">
-              <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
-                <span>Members ({membersLoading ? '...' : filteredMembers.length})</span>
-                {membersLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
+                  <span>Members ({membersLoading ? '...' : filteredMembers.length})</span>
+                  {membersLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                </CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => queryClient.invalidateQueries({ queryKey: ['community-members', selectedCommunityId] })}
+                  disabled={membersLoading}
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {membersError ? (
@@ -656,7 +735,8 @@ export const CommunityManagement = () => {
         open={inviteDialogOpen}
         onOpenChange={setInviteDialogOpen}
         onInvitationSent={() => {
-          // Optionally refresh member list or show success message
+          // Refresh member list to show pending invitations
+          queryClient.invalidateQueries({ queryKey: ['community-members', selectedCommunityId] });
           toast.success('Team member invitation sent successfully!');
         }}
       />

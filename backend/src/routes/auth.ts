@@ -7,6 +7,7 @@ import { asyncHandler, ValidationError, ConflictError, UnauthorizedError } from 
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth.js';
 import { emailService } from '../services/email.js';
 import { User } from '../types/database.js';
+import { GoogleOAuthService } from '../services/oauth.js';
 
 const router = Router();
 
@@ -414,6 +415,151 @@ router.post('/resend-verification', asyncHandler(async (req, res) => {
   res.json({
     message: 'If an account with that email exists and is unverified, a new verification email has been sent.'
   });
+}));
+
+// Google OAuth initiation for authentication (sign-in/sign-up)
+router.get('/google/initiate', asyncHandler(async (req, res) => {
+  try {
+    console.log('🚀 Initiating Google OAuth for authentication...');
+
+    // Generate secure state for CSRF protection
+    const state = `google_auth_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+
+    // Get Google OAuth service
+    const googleService = new GoogleOAuthService();
+
+    // Generate auth URL
+    const authUrl = googleService.generateAuthUrl(state);
+
+    console.log('🔗 Generated Google auth URL');
+
+    // Store state information (in a real app, you'd use Redis or database)
+    // For now, we'll just return it and let the frontend handle it
+
+    // Return the auth URL for frontend to redirect to
+    res.json({
+      success: true,
+      authUrl,
+      state
+    });
+
+  } catch (error) {
+    console.error('❌ Google OAuth initiation failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to initiate Google OAuth',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+}));
+
+// Google OAuth callback for authentication
+router.get('/google/callback', asyncHandler(async (req, res) => {
+  try {
+    const { code, state, error: oauthError } = req.query;
+
+    console.log('📥 Google OAuth callback received');
+
+    if (oauthError) {
+      console.error('❌ Google OAuth error:', oauthError);
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:8080'}/login?error=oauth_error&message=${encodeURIComponent(oauthError as string)}`);
+    }
+
+    if (!code || !state) {
+      console.error('❌ Missing code or state in Google OAuth callback');
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:8080'}/login?error=missing_parameters`);
+    }
+
+    // Handle Google OAuth callback
+    const googleService = new GoogleOAuthService();
+    const result = await googleService.handleCallback(code as string);
+
+    if (!result.success || !result.userData) {
+      console.error('❌ Google OAuth callback failed:', result.error);
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:8080'}/login?error=oauth_failed&message=${encodeURIComponent(result.error || 'Unknown error')}`);
+    }
+
+    const firestore = getFirestoreClient();
+    const userData = result.userData;
+
+    // Check if user already exists
+    const existingUserQuery = await firestore
+      .collection('users')
+      .where('email', '==', userData.email)
+      .limit(1)
+      .get();
+
+    let user: any;
+    let isNewUser = false;
+
+    if (existingUserQuery.empty) {
+      // Create new user
+      isNewUser = true;
+      const newUserData = {
+        email: userData.email,
+        name: userData.name,
+        google_id: userData.id,
+        avatar_url: userData.picture,
+        role: 'member' as const,
+        email_verified: userData.verified_email || true,
+        is_active: true,
+        auth_provider: 'google',
+        created_at: getServerTimestamp(),
+        updated_at: getServerTimestamp()
+      };
+
+      const userRef = await firestore.collection('users').add(newUserData);
+      user = { id: userRef.id, ...newUserData };
+    } else {
+      // Update existing user with Google OAuth info if not already present
+      const existingUser = existingUserQuery.docs[0];
+      const existingUserData = existingUser.data();
+
+      const updateData: any = {
+        updated_at: getServerTimestamp()
+      };
+
+      // Add Google OAuth data if not already present
+      if (!existingUserData.google_id) {
+        updateData.google_id = userData.id;
+        updateData.avatar_url = userData.picture;
+        updateData.auth_provider = 'google';
+      }
+
+      await firestore.collection('users').doc(existingUser.id).update(updateData);
+
+      user = {
+        id: existingUser.id,
+        ...existingUserData,
+        ...updateData
+      };
+    }
+
+    // Generate JWT token
+    const token = generateToken(user.id);
+
+    // Redirect to frontend with success
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+    const redirectUrl = new URL(`${frontendUrl}/auth/callback`);
+    redirectUrl.searchParams.set('token', token);
+    redirectUrl.searchParams.set('user', JSON.stringify({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      organization_id: user.organization_id,
+      email_verified: user.email_verified,
+      avatar_url: user.avatar_url
+    }));
+    redirectUrl.searchParams.set('isNewUser', isNewUser.toString());
+
+    res.redirect(redirectUrl.toString());
+
+  } catch (error) {
+    console.error('❌ Google OAuth callback error:', error);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+    res.redirect(`${frontendUrl}/login?error=oauth_failed&message=${encodeURIComponent('Authentication failed')}`);
+  }
 }));
 
 export default router;

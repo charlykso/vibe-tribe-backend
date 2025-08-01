@@ -34,6 +34,7 @@ export const InvitationsList: React.FC<InvitationsListProps> = ({ refreshTrigger
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const fetchInvitations = async () => {
@@ -158,29 +159,46 @@ export const InvitationsList: React.FC<InvitationsListProps> = ({ refreshTrigger
     );
   }
 
+  // Filter invitations based on showAll toggle
+  const filteredInvitations = showAll ? invitations : invitations.filter(inv => inv.status === 'pending');
+  const pendingCount = invitations.filter(inv => inv.status === 'pending').length;
+
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Mail className="w-5 h-5" />
-            Pending Invitations ({invitations.filter(inv => inv.status === 'pending').length})
+            {showAll ? `All Invitations (${invitations.length})` : `Pending Invitations (${pendingCount})`}
           </CardTitle>
-          <Button variant="outline" size="sm" onClick={fetchInvitations}>
-            <RefreshCw className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={showAll ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowAll(!showAll)}
+            >
+              {showAll ? "Show Pending Only" : "Show All"}
+            </Button>
+            <Button variant="outline" size="sm" onClick={fetchInvitations}>
+              <RefreshCw className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
-        {invitations.length === 0 ? (
+        {filteredInvitations.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <Mail className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <p className="text-lg font-medium">No invitations sent yet</p>
-            <p className="text-sm">Invite team members to start collaborating</p>
+            <p className="text-lg font-medium">
+              {showAll ? "No invitations sent yet" : "No pending invitations"}
+            </p>
+            <p className="text-sm">
+              {showAll ? "Invite team members to start collaborating" : "All invitations have been processed"}
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
-            {invitations.map((invitation) => (
+            {filteredInvitations.map((invitation) => (
               <div
                 key={invitation.id}
                 className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50"

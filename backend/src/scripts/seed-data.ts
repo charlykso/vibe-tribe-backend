@@ -14,11 +14,23 @@ const seedData = async (): Promise<void> => {
 
     const firestore = getFirestoreClient();
 
-    // Use the existing user's organization ID
-    const existingOrgId = '51eehsR75718t2svEqhh'; // From the user logs
-    console.log('✅ Using existing organization ID:', existingOrgId);
+    // Find the first user and use their organization ID
+    const usersSnapshot = await firestore.collection('users').limit(1).get();
 
-    // Skip creating user since we're using existing user
+    if (usersSnapshot.empty) {
+      console.error('❌ No users found in database. Please create a user first.');
+      process.exit(1);
+    }
+
+    const firstUser = usersSnapshot.docs[0].data();
+    const existingOrgId = firstUser.organization_id;
+
+    if (!existingOrgId) {
+      console.error('❌ User does not have an organization_id. Please ensure user has an organization.');
+      process.exit(1);
+    }
+
+    console.log('✅ Using organization ID from first user:', existingOrgId);
     console.log('✅ Using existing user with organization');
 
     // Create sample communities

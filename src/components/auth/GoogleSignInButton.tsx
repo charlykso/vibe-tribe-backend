@@ -4,25 +4,34 @@ import { Loader2 } from 'lucide-react';
 import { AuthService } from '@/lib/auth';
 
 interface GoogleSignInButtonProps {
-  mode?: 'signin' | 'signup';
+  mode?: 'signin' | 'signup' | 'invitation';
   className?: string;
   disabled?: boolean;
+  invitationToken?: string;
 }
 
 export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
   mode = 'signin',
   className = '',
-  disabled = false
+  disabled = false,
+  invitationToken
 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
-      
+
+      if (mode === 'invitation' && invitationToken) {
+        // For invitation mode, store the token and redirect to Google OAuth
+        // The callback will handle the invitation acceptance
+        localStorage.setItem('invitation_token', invitationToken);
+        localStorage.setItem('oauth_mode', 'invitation');
+      }
+
       // Initiate Google OAuth flow
       const { authUrl } = await AuthService.initiateGoogleAuth();
-      
+
       // Redirect to Google OAuth
       window.location.href = authUrl;
     } catch (error) {
@@ -32,7 +41,18 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
     }
   };
 
-  const buttonText = mode === 'signin' ? 'Sign in with Google' : 'Sign up with Google';
+  const getButtonText = () => {
+    switch (mode) {
+      case 'signin':
+        return 'Sign in with Google';
+      case 'signup':
+        return 'Sign up with Google';
+      case 'invitation':
+        return 'Accept invitation with Google';
+      default:
+        return 'Continue with Google';
+    }
+  };
 
   return (
     <Button
@@ -65,7 +85,7 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
         </svg>
       )}
       <span className="text-gray-700 font-medium">
-        {isLoading ? 'Connecting...' : buttonText}
+        {isLoading ? 'Connecting...' : getButtonText()}
       </span>
     </Button>
   );

@@ -60,8 +60,18 @@ export declare class InstagramOAuthService {
         refreshToken?: string;
     } | null>;
 }
+export declare class GoogleOAuthService implements OAuthService {
+    private config;
+    constructor();
+    generateAuthUrl(state: string): string;
+    handleCallback(code: string): Promise<OAuthResult>;
+    refreshAccessToken(refreshToken: string): Promise<{
+        accessToken: string;
+        refreshToken?: string;
+    } | null>;
+}
 export declare class OAuthServiceFactory {
-    static getService(platform: string): TwitterOAuthService | LinkedInOAuthService | FacebookOAuthService | InstagramOAuthService;
+    static getService(platform: string): TwitterOAuthService | LinkedInOAuthService | FacebookOAuthService | InstagramOAuthService | GoogleOAuthService;
     static getLinkedInService(): LinkedInOAuthService;
     static getTwitterService(): TwitterOAuthService;
     static getFacebookService(): FacebookOAuthService;
